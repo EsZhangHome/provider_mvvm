@@ -12,6 +12,8 @@ class TokenInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // 每次请求发出前动态读取 token。
+    // 这样登录、退出、刷新 token 后，不需要重新创建 Dio。
     final token = tokenProvider();
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -24,6 +26,7 @@ class TokenInterceptor extends Interceptor {
 class AppLogInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // 只打印方法和完整 URL，避免把敏感请求体、token 等信息直接输出到日志。
     AppLogger.log('${options.method} ${options.uri}');
     handler.next(options);
   }
@@ -52,6 +55,8 @@ class UnauthorizedGuard {
 
   void handle() {
     if (_isHandling) {
+      // 已经处理过一次 401，就不再重复处理。
+      // 否则多个并发接口同时 401 会连续 logout 和跳转。
       return;
     }
     _isHandling = true;
@@ -73,6 +78,8 @@ class UnauthorizedInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
+      // 这里只做“通知”，真正的退出登录逻辑在 AuthProvider。
+      // 网络层不直接操作路由，也不直接清空用户状态。
       guard.handle();
     }
     handler.next(err);
@@ -95,6 +102,8 @@ class RetryInterceptor extends Interceptor {
   @override
   Future<void> onError(
       DioException err, ErrorInterceptorHandler handler) async {
+    // 只有超时和连接失败才重试。
+    // 业务错误、401、404、请求取消等情况不应该自动重试。
     if (!_shouldRetry(err)) {
       handler.next(err);
       return;
@@ -102,16 +111,20 @@ class RetryInterceptor extends Interceptor {
 
     final retryIndex = err.requestOptions.extra['retryIndex'] as int? ?? 0;
     if (retryIndex >= retryCount) {
+      // 已达到最大重试次数，继续把错误交给后续异常处理。
       handler.next(err);
       return;
     }
 
+    // 简单退避策略：第 1 次等 1 秒，第 2 次等 2 秒。
+    // retryDelays 长度不足时使用最后一个 delay。
     final delaySeconds = retryDelays[
         retryIndex < retryDelays.length ? retryIndex : retryDelays.length - 1];
     await Future<void>.delayed(Duration(seconds: delaySeconds));
 
     err.requestOptions.extra['retryIndex'] = retryIndex + 1;
     try {
+      // 使用 dio.fetch 复用原始 RequestOptions，最大程度保持原请求参数不变。
       handler.resolve(await dio.fetch<dynamic>(err.requestOptions));
     } on DioException catch (error) {
       handler.next(error);

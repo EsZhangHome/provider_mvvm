@@ -18,6 +18,8 @@ class LocalStorage {
       _preferences = await SharedPreferences.getInstance();
       _initialized = true;
     } catch (error, stack) {
+      // 本地存储失败不应该阻断 App 启动。
+      // 记录错误后，所有读写方法都会走安全降级逻辑。
       _initialized = false;
       CrashReporter.report(error, stack);
     }
@@ -25,6 +27,7 @@ class LocalStorage {
 
   static String? getString(String key) {
     if (!_initialized) {
+      // 未初始化时返回 null，让调用方按“没有缓存”处理。
       return null;
     }
     return _preferences?.getString(key);
@@ -32,6 +35,7 @@ class LocalStorage {
 
   static Future<bool> setString(String key, String value) {
     if (!_initialized) {
+      // 写入失败用 false 表达，不抛异常影响业务流程。
       return Future<bool>.value(false);
     }
     return _preferences!.setString(key, value);
@@ -39,6 +43,7 @@ class LocalStorage {
 
   static bool getBool(String key, {bool defaultValue = false}) {
     if (!_initialized) {
+      // bool 读取支持默认值，避免调用方每次都判空。
       return defaultValue;
     }
     return _preferences?.getBool(key) ?? defaultValue;
@@ -60,6 +65,7 @@ class LocalStorage {
 
   static Future<bool> clear() {
     if (!_initialized) {
+      // clear 是高风险操作，未初始化时直接返回失败即可。
       return Future<bool>.value(false);
     }
     return _preferences!.clear();

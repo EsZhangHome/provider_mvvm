@@ -13,12 +13,14 @@ class HomeViewModel extends BaseViewModel {
 
   // 页面进来时调用。列表为空时会进入 empty 状态。
   Future<void> loadHome() async {
+    // ViewModel 不知道数据来自缓存还是网络，这些细节都封装在 Repository。
     final banners = await asyncRequest<List<HomeBanner>>(
       () => _repository.fetchBanners(cancelToken: cancelToken),
       isEmpty: (data) => data.isEmpty,
       cancelToken: cancelToken,
     );
     if (banners != null) {
+      // 更新页面可见字段，然后通知 UI 刷新。
       bannerList = banners;
       safeNotifyListeners();
     }

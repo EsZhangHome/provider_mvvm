@@ -37,7 +37,12 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.login)),
       body: BasePage<LoginViewModel>(
+        // LoginViewModel 通过 get_it 创建。
+        // 这样 LoginPage 不需要知道 LoginRepositoryImpl 怎么构造。
         create: () => locator<LoginViewModel>(),
+
+        // 登录页提交时不希望整个页面变成空白 loading，
+        // 所以用 overlay：表单还在，只是在上面盖一层加载遮罩。
         loadingStyle: LoadingStyle.overlay,
         builder: (context, viewModel) {
           return SingleChildScrollView(
@@ -71,6 +76,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 ElevatedButton(
+                  // 请求进行中禁用按钮，配合 BaseViewModel 的请求防抖，避免重复登录请求。
                   onPressed: viewModel.isLoading
                       ? null
                       : () => _login(context, viewModel),
@@ -92,12 +98,18 @@ class _LoginPageState extends State<LoginPage> {
         !success ||
         viewModel.token == null ||
         viewModel.user == null) {
+      // mounted=false 表示页面已经销毁，不能再使用 context。
+      // success=false 或 token/user 为空，说明登录失败或数据不完整，不跳转。
       return;
     }
+
+    // AuthProvider 保存 token/user 后会 notifyListeners，
+    // GoRouter 会重新执行登录守卫，整个 App 的登录态也会同步更新。
     await context
         .read<AuthProvider>()
         .loginSuccess(viewModel.token!, viewModel.user!);
     if (mounted) {
+      // 登录成功进入主框架页，MainPage 内部再管理首页/社区/我的三个 Tab。
       context.go(RoutePaths.main);
     }
   }

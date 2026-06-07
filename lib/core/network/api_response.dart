@@ -28,6 +28,9 @@ class ApiResponse<T> {
     Map<String, dynamic> json,
     T Function(dynamic json)? fromJsonT,
   ) {
+    // fromJsonT 为空时，直接把 data 当作 T 返回。
+    // fromJsonT 不为空时，把 data 交给业务 Model 自己解析。
+    // 这样 ApiClient 不需要知道 UserModel、HomeBanner 等具体类型。
     return ApiResponse<T>(
       code: json['code'] as int? ?? 0,
       message: json['message'] as String? ?? '',

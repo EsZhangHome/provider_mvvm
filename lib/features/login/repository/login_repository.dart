@@ -29,6 +29,7 @@ class LoginRepositoryImpl implements LoginRepository {
     CancelToken? cancelToken,
   }) async {
     // 当前没有真实后端，先模拟接口；接入真实后端时改为下面注释里的 _apiClient.post。
+    // Repository 不处理 loading/error，也不跳页面；它只负责拿数据和转 Model。
     await Future<void>.delayed(const Duration(milliseconds: 600));
     return LoginResponse.fromJson({
       'token': 'mock_token_${DateTime.now().millisecondsSinceEpoch}',

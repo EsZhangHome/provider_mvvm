@@ -15,6 +15,7 @@ class EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 空状态使用弱提示图标，不打断用户。
           Icon(Icons.inbox_outlined,
               size: 48, color: Theme.of(context).hintColor),
           const SizedBox(height: 12),

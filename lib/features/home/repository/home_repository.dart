@@ -29,8 +29,11 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<List<HomeBanner>> fetchBanners({CancelToken? cancelToken}) async {
+    // 首页是典型的“缓存优先”场景：有旧数据时先展示，减少白屏时间。
     final cachedData = await _cachePolicy.readCache();
     if (cachedData != null) {
+      // 返回缓存的同时，后台悄悄拉取新数据并写入缓存。
+      // 后台刷新失败不影响本次页面展示，所以 catch 后吞掉。
       Future<void>(() async {
         try {
           await _fetchRemoteBanners(cancelToken: cancelToken);
@@ -38,6 +41,8 @@ class HomeRepositoryImpl implements HomeRepository {
       });
       return cachedData;
     }
+
+    // 没有缓存时，只能等待远端数据。BaseViewModel 会显示 loading。
     final remoteData = await _fetchRemoteBanners(cancelToken: cancelToken);
     return remoteData;
   }
@@ -51,6 +56,8 @@ class HomeRepositoryImpl implements HomeRepository {
       HomeBanner(id: '2', title: 'MVVM 让页面和业务状态分离', imageUrl: ''),
       HomeBanner(id: '3', title: 'Repository 统一数据获取和转换', imageUrl: ''),
     ];
+
+    // 不管是真实接口还是模拟数据，拿到新数据后都写入缓存。
     await _cachePolicy.writeCache(banners);
     return banners;
 

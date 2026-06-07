@@ -14,6 +14,7 @@ class HomeBanner {
   final String imageUrl;
 
   factory HomeBanner.fromJson(Map<String, dynamic> json) {
+    // 后端字段缺失时使用空字符串，保证 UI 渲染不会空指针。
     return HomeBanner(
       id: asOr(json['id'], ''),
       title: asOr(json['title'], ''),
@@ -26,6 +27,7 @@ class HomeBanner {
     String? title,
     String? imageUrl,
   }) {
+    // 便于后续局部更新 banner，例如只替换标题或图片。
     return HomeBanner(
       id: id ?? this.id,
       title: title ?? this.title,

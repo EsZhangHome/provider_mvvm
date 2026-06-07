@@ -20,6 +20,7 @@ class ApiException implements Exception {
 
   factory ApiException.fromDioException(DioException error) {
     // DioExceptionType 能区分超时、取消、服务器返回错误等情况。
+    // 这里把 Dio 的错误类型转换成用户能理解的文案。
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -47,6 +48,8 @@ class ApiException implements Exception {
   }
 
   static String _messageFromResponse(Response<dynamic>? response) {
+    // 如果后端错误响应里已经有 message，就优先使用后端文案。
+    // 否则使用统一的服务器异常提示。
     final data = response?.data;
     if (data is Map<String, dynamic> && data['message'] is String) {
       return data['message'] as String;

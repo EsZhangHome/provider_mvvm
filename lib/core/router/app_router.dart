@@ -26,6 +26,8 @@ class AppRouter {
       refreshListenable: authProvider,
       errorBuilder: (context, state) => const NotFoundView(),
       redirect: (BuildContext context, GoRouterState state) {
+        // 依次执行所有路由守卫，谁先返回非 null 路径，就使用谁的重定向结果。
+        // 这样未来新增权限守卫时，不需要把所有判断都塞进 AppRouter。
         for (final guard in guards) {
           final redirectPath = guard.redirect(state, context);
           if (redirectPath != null) {
@@ -35,14 +37,18 @@ class AppRouter {
         return null;
       },
       routes: [
+        // 登录页：未登录用户进入这里；已登录用户会被 AuthRouteGuard 重定向到 /main。
         GoRoute(
           path: RoutePaths.login,
           builder: (context, state) => const LoginPage(),
         ),
+        // 主页面：登录后的根页面，内部通过 IndexedStack 管理三个 Tab。
         GoRoute(
           path: RoutePaths.main,
           builder: (context, state) => const MainPage(),
         ),
+        // 下面三个路径用于外部直接打开某个 Tab。
+        // 注意：进入后仍然创建 MainPage，只是 initialIndex 不同。
         GoRoute(
           path: RoutePaths.mainHome,
           builder: (context, state) => const MainPage(initialIndex: 0),

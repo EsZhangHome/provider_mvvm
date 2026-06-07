@@ -6,9 +6,13 @@ class TokenStorage {
   TokenStorage._();
 
   static const String _tokenKey = 'auth_token';
+
+  // token 属于敏感数据，因此使用 flutter_secure_storage。
+  // Android/iOS 会走系统安全存储能力，比 SharedPreferences 更适合保存 token。
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   static Future<String?> getToken() {
+    // 安全存储 API 是异步的，所以 AuthProvider.restoreSession 必须 await。
     return _storage.read(key: _tokenKey);
   }
 

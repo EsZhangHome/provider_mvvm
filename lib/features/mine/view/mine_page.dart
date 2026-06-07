@@ -16,15 +16,21 @@ class MinePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // MinePage 需要展示当前用户信息，所以监听 AuthProvider。
+    // 退出登录后 AuthProvider 会变化，页面也会随之刷新。
     final authProvider = context.watch<AuthProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.mine)),
       body: BasePage<MineViewModel>(
         create: MineViewModel.new,
+
+        // MineViewModel 只加载“我的页”需要的数据。
+        // currentUser 仍然来自全局登录态 AuthProvider。
         onModelReady: (viewModel) =>
             viewModel.loadMine(authProvider.currentUser),
         onRetry: (viewModel) => viewModel.loadMine(authProvider.currentUser),
         builder: (context, viewModel) {
+          // ViewModel 加载完成前，先用 AuthProvider 中已有的用户信息兜底。
           final user = viewModel.user ?? authProvider.currentUser;
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -67,8 +73,10 @@ class MinePage extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
+    // 退出登录必须走 AuthProvider，确保 token、本地用户信息、路由守卫都同步更新。
     await context.read<AuthProvider>().logout();
     if (context.mounted) {
+      // 主动跳登录页，让用户马上看到退出后的页面。
       context.go(RoutePaths.login);
     }
   }

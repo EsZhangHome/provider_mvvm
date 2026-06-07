@@ -28,6 +28,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     CancelToken? cancelToken,
   }) async {
     // 当前没有真实后端，先模拟接口；接入真实后端时改为下面注释里的 _apiClient.get。
+    // fallbackUser 是 AuthProvider 里已有的用户信息，接口未接入前作为个人资料兜底。
     await Future<void>.delayed(const Duration(milliseconds: 500));
     return fallbackUser;
 

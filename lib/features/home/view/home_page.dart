@@ -30,14 +30,20 @@ class HomePage extends StatelessWidget {
         create: () => locator<HomeViewModel>(),
         // 首帧渲染后请求数据，避免在 build 过程中触发状态刷新。
         onModelReady: (viewModel) => viewModel.loadHome(),
+
+        // ErrorView 点击重试时会调用这里。
         onRetry: (viewModel) => viewModel.loadHome(),
         builder: (context, viewModel) {
+          // 这里能执行到，说明当前状态是 idle 或 success。
+          // loading/error/empty 已经被 BasePage + StateView 接管。
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: viewModel.bannerList.length,
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               final banner = viewModel.bannerList[index];
+              // 当前用 Card + ListTile 展示模拟 banner。
+              // 接入真实图片时，可以把 leading/subtitle 替换成图片组件。
               return Card(
                 child: ListTile(
                   leading: CircleAvatar(child: Text('${index + 1}')),

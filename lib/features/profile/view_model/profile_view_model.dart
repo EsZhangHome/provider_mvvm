@@ -15,6 +15,7 @@ class ProfileViewModel extends BaseViewModel {
   // currentUser 来自 AuthProvider，作为没有真实接口时的兜底数据。
   Future<void> loadProfile(UserModel? currentUser) async {
     if (currentUser == null) {
+      // 未登录用户理论上无法访问受保护页面，但这里仍做防御式处理。
       setError(AppStrings.userMissing);
       return;
     }
@@ -23,6 +24,7 @@ class ProfileViewModel extends BaseViewModel {
       cancelToken: cancelToken,
     );
     if (profile != null) {
+      // 只暴露页面需要展示的用户字段。
       user = profile;
       safeNotifyListeners();
     }

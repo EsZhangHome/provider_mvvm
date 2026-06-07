@@ -13,6 +13,8 @@ class LoginResponse {
   final UserModel user;
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
+    // 登录接口通常返回 token + user。
+    // user 结构异常时用空 Map 兜底，交给 UserModel.fromJson 生成默认空字段。
     return LoginResponse(
       token: asOr(json['token'], ''),
       user: UserModel.fromJson(
@@ -23,6 +25,7 @@ class LoginResponse {
 
   @override
   bool operator ==(Object other) {
+    // 用于单元测试或状态比较。
     return identical(this, other) ||
         other is LoginResponse && other.token == token && other.user == user;
   }
