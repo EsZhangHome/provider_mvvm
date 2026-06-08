@@ -6,8 +6,9 @@
 // 1. 注册全局异常捕获（FlutterError.onError, PlatformDispatcher）
 // 2. 绑定 Flutter 引擎（WidgetsFlutterBinding.ensureInitialized）
 // 3. 初始化本地存储（LocalStorage.init）
-// 4. 注册依赖注入（setupServiceLocator）
-// 5. 启动 App（runApp）
+// 4. 初始化本地数据库（AppDatabase.init）
+// 5. 注册依赖注入（setupServiceLocator）
+// 6. 启动 App（runApp）
 //
 // 设计要点：
 // - 初始化顺序很重要：存储必须在 DI 之前初始化，因为某些依赖可能依赖存储
@@ -19,6 +20,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'core/database/app_database.dart';
 import 'core/di/service_locator.dart';
 import 'core/storage/local_storage.dart';
 import 'core/utils/crash_reporter.dart';
@@ -54,14 +56,24 @@ Future<void> main() async {
     CrashReporter.report(error, stack);
   }
 
-  // ==================== 步骤 4：注册依赖注入 ====================
+  // ==================== 步骤 4：初始化本地数据库 ====================
+
+  // 初始化 SQLite 数据库，后续 Repository 可以通过 DatabaseService 读写缓存数据
+  // 初始化失败时只记录日志并继续启动，避免数据库异常直接阻断 App 打开
+  try {
+    await AppDatabase.init();
+  } catch (error, stack) {
+    CrashReporter.report(error, stack);
+  }
+
+  // ==================== 步骤 5：注册依赖注入 ====================
 
   // 注册 Repository、ViewModel、ApiService 等依赖
   // 页面里通过 locator<T>() 获取对象，避免到处手动 new
   // 后续也方便替换 fake 实现做单元测试
   await setupServiceLocator();
 
-  // ==================== 步骤 5：启动 App ====================
+  // ==================== 步骤 6：启动 App ====================
 
   // MyApp 只负责组装 Provider、主题和路由，具体业务放到 features 里
   runApp(const MyApp());
