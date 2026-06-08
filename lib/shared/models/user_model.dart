@@ -7,17 +7,20 @@
 // 放在 shared 中可以避免模块间的循环依赖。
 //
 // 设计要点：
-// 1. 使用 json_helper 的安全类型转换（asOr/asOrNull），避免后端字段类型异常导致崩溃
-// 2. 提供 copyWith 方法，方便局部更新用户信息（如只改昵称或头像）
-// 3. 提供 toJson 方法，用于 AuthProvider 把用户信息序列化到本地存储
+// 1. 使用 json_serializable 生成 fromJson / toJson，减少手写字段映射错误
+// 2. 通过 @JsonKey(defaultValue: ...) 给关键字段提供兜底默认值
+// 3. 提供 copyWith 方法，方便局部更新用户信息（如只改昵称或头像）
 // 4. 手写 operator== 和 hashCode，不依赖 equatable/freezed 等外部包
 // 5. 使用 const 构造函数，所有字段都是 final，确保不可变性
 
-import '../../core/utils/json_helper.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user_model.g.dart';
 
 /// 用户数据模型。
 ///
 /// 代表一个登录用户的基本信息，所有需要展示用户信息的模块都可以使用。
+@JsonSerializable()
 class UserModel {
   const UserModel({
     required this.id,
@@ -27,12 +30,15 @@ class UserModel {
   });
 
   /// 用户唯一标识
+  @JsonKey(defaultValue: '')
   final String id;
 
   /// 用户昵称/姓名
+  @JsonKey(defaultValue: '')
   final String name;
 
   /// 用户邮箱
+  @JsonKey(defaultValue: '')
   final String email;
 
   /// 用户头像 URL，可能为空
@@ -52,14 +58,7 @@ class UserModel {
   /// });
   /// ```
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
-      // 必填字段使用 asOr，提供默认值防止异常
-      id: asOr(json['id'], ''),
-      name: asOr(json['name'], ''),
-      email: asOr(json['email'], ''),
-      // 可选字段使用 asOrNull，允许 null
-      avatarUrl: asOrNull<String>(json['avatarUrl']),
-    );
+    return _$UserModelFromJson(json);
   }
 
   /// 创建 UserModel 的副本，只修改指定的字段。
@@ -89,14 +88,7 @@ class UserModel {
   /// 序列化为 JSON Map。
   ///
   /// 当前用于 AuthProvider 把用户信息保存到 SharedPreferences。
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'avatarUrl': avatarUrl,
-    };
-  }
+  Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   /// 相等性比较：所有字段相等才认为两个 UserModel 相等。
   ///
