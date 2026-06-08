@@ -10,10 +10,18 @@
 - GoRouter
 - get_it
 - sqflite
+- json_serializable
+- cached_network_image
+- connectivity_plus
+- permission_handler
+- package_info_plus
 - shared_preferences
 - flutter_secure_storage
 
 项目当前只保留 Android 和 iOS 平台目录，适合作为移动端业务 App 的基础工程。
+
+当前项目保持 Dart SDK `>=2.19.6 <3.0.0`，所以依赖版本选择的是兼容旧 SDK 的稳定版本，不追最新版。
+如果后续升级到 Dart 3，再统一评估依赖大版本升级。
 
 ## 1. 项目整体分层
 
@@ -605,7 +613,97 @@ class ApiResponse<T> {
 
 401 处理有并发保护：多个接口同时返回 401 时，只会触发一次退出登录，避免重复跳转。
 
-### 3.4 core/router
+#### NetworkStatusService
+
+文件：[lib/core/network/network_status_service.dart](lib/core/network/network_status_service.dart)
+
+`NetworkStatusService` 统一封装网络连接状态，底层使用 `connectivity_plus`。
+
+业务代码不要直接调用 `Connectivity()`，而是通过 `locator<NetworkStatusService>()` 获取状态：
+
+```dart
+final networkStatusService = locator<NetworkStatusService>();
+final status = await networkStatusService.getCurrentStatus();
+
+if (!status.isConnected) {
+  // 可以选择读取数据库缓存，或者提示用户当前无网络
+}
+```
+
+它解决的问题是：
+
+- Repository 可以根据网络状态决定是否优先读本地缓存。
+- ViewModel 可以在断网时给出更准确的提示。
+- 测试时可以用 fake `NetworkStatusService` 替代真实插件。
+
+注意：`connectivity_plus` 判断的是设备连接状态，不保证接口一定能访问。真实接口是否可用，仍然以 Dio 请求结果为准。
+
+### 3.5 core/permission
+
+路径：[lib/core/permission](lib/core/permission)
+
+权限层使用 `permission_handler`，但业务代码不直接依赖它。
+
+核心文件：
+
+- `permission_service.dart`：权限服务抽象和默认实现
+
+常见使用场景：
+
+- 上传头像前申请相机 / 相册权限
+- 发语音前申请麦克风权限
+- 地图定位前申请定位权限
+- 推送功能申请通知权限
+
+推荐用法：
+
+```dart
+final permissionService = locator<PermissionService>();
+final result = await permissionService.request(AppPermissionType.camera);
+
+if (result.isGranted) {
+  // 继续打开相机
+}
+
+if (result.shouldOpenSettings) {
+  await permissionService.openSettings();
+}
+```
+
+为什么要封装：
+
+- 页面不用关心 `permission_handler` 的具体 API。
+- 权限状态可以在项目内统一命名。
+- 以后可以统一弹窗文案、统一埋点、统一测试 fake。
+
+新增权限时，在 `AppPermissionType` 中增加枚举，并在 `PermissionHandlerService.mapPermissionType` 中补映射。
+
+### 3.6 core/app
+
+路径：[lib/core/app](lib/core/app)
+
+这里放 App 级别但不属于 UI、网络、数据库的通用能力。
+
+当前文件：
+
+- `app_info_service.dart`：统一获取 App 名称、包名、版本号、构建号
+
+使用方式：
+
+```dart
+final appInfoService = locator<AppInfoService>();
+final appInfo = await appInfoService.getAppInfo();
+
+print(appInfo.displayVersion); // 1.0.0+1
+```
+
+常见使用场景：
+
+- 关于页面展示版本号。
+- 日志里带上当前版本。
+- 后续接崩溃上报时附带版本信息。
+
+### 3.7 core/router
 
 路径：[lib/core/router](lib/core/router)
 
@@ -635,7 +733,7 @@ class ApiResponse<T> {
 
 路由守卫被抽成 `RouteGuard`，后续如果要加会员守卫、权限守卫、灰度守卫，可以继续新增实现类，然后传入 `AppRouter`。
 
-### 3.5 core/storage
+### 3.8 core/storage
 
 路径：[lib/core/storage](lib/core/storage)
 
@@ -657,7 +755,7 @@ token 使用 `flutter_secure_storage` 存储，不再明文存入 `SharedPrefere
 
 注意：`getToken()` 是异步方法，调用时必须 `await`。
 
-### 3.6 core/di
+### 3.9 core/di
 
 路径：[lib/core/di/service_locator.dart](lib/core/di/service_locator.dart)
 
@@ -666,6 +764,10 @@ token 使用 `flutter_secure_storage` 存储，不再明文存入 `SharedPrefere
 当前注册了：
 
 - `ApiService`
+- `DatabaseService`
+- `NetworkStatusService`
+- `PermissionService`
+- `AppInfoService`
 - `HomeRepository`
 - `LoginRepository`
 - `ProfileRepository`
@@ -684,7 +786,7 @@ create: () => locator<HomeViewModel>()
 - `AuthProvider`
 - `ThemeProvider`
 
-### 3.7 core/l10n
+### 3.10 core/l10n
 
 路径：[lib/core/l10n/app_strings.dart](lib/core/l10n/app_strings.dart)
 
@@ -696,7 +798,7 @@ create: () => locator<HomeViewModel>()
 - 后续接正式多语言时更容易迁移
 - 统一修改文案更方便
 
-### 3.8 core/theme
+### 3.11 core/theme
 
 路径：[lib/core/theme](lib/core/theme)
 
@@ -714,7 +816,7 @@ AppSpacing.xl
 AppRadius.card
 ```
 
-### 3.9 core/utils
+### 3.12 core/utils
 
 路径：[lib/core/utils](lib/core/utils)
 
@@ -778,10 +880,47 @@ authProvider.isLoggedIn
 - `==`
 - `hashCode`
 
+Model 推荐使用 `json_serializable` 生成 `fromJson / toJson`。
+
+标准写法：
+
+```dart
+import 'package:json_annotation/json_annotation.dart';
+
+part 'order_model.g.dart';
+
+@JsonSerializable()
+class OrderModel {
+  const OrderModel({
+    required this.id,
+    required this.title,
+  });
+
+  @JsonKey(defaultValue: '')
+  final String id;
+
+  @JsonKey(defaultValue: '')
+  final String title;
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return _$OrderModelFromJson(json);
+  }
+
+  Map<String, dynamic> toJson() => _$OrderModelToJson(this);
+}
+```
+
+新增或修改带 `@JsonSerializable()` 的 Model 后，需要运行：
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
 ### shared/widgets
 
 通用状态组件：
 
+- `AppNetworkImage`
 - `LoadingView`
 - `ErrorView`
 - `EmptyView`
@@ -789,6 +928,21 @@ authProvider.isLoggedIn
 - `NotFoundView`
 
 页面状态展示由 `StateView` 统一管理，一般业务页面不需要自己写 loading / error / empty 判断。
+
+网络图片展示统一使用 `AppNetworkImage`，不要在页面里直接使用 `Image.network` 或 `CachedNetworkImage`。
+
+示例：
+
+```dart
+AppNetworkImage(
+  imageUrl: banner.imageUrl,
+  width: double.infinity,
+  height: 160,
+  borderRadius: BorderRadius.circular(8),
+)
+```
+
+这样可以统一处理图片缓存、加载中占位、加载失败占位和圆角。
 
 ## 6. features 业务模块
 
@@ -1606,6 +1760,87 @@ Widget 测试可以测：
 
 - 未登录时是否显示登录页。
 - 登录按钮点击后是否进入主页面。
+
+## 11. 工程工具和常用命令
+
+### 11.1 JSON 代码生成
+
+项目已接入：
+
+- `json_annotation`
+- `json_serializable`
+- `build_runner`
+
+修改带 `@JsonSerializable()` 的 Model 后，运行：
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+如果你希望监听文件变化自动生成，可以运行：
+
+```bash
+flutter pub run build_runner watch --delete-conflicting-outputs
+```
+
+生成文件一般是：
+
+```text
+xxx.g.dart
+```
+
+这些文件需要提交到仓库。原因是其他开发者拉代码后可以直接运行，不一定每次都先执行生成命令。
+
+### 11.2 启动图和 App 图标
+
+项目已添加开发工具依赖：
+
+- `flutter_native_splash`
+- `flutter_launcher_icons`
+
+当前骨架项目没有真实品牌图，所以没有生成默认图标和启动图，避免后续项目还要删除假素材。
+
+等具体项目有品牌图后，可以在 `pubspec.yaml` 中补配置：
+
+```yaml
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#121212"
+  android: true
+  ios: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app/icon.png"
+```
+
+然后执行：
+
+```bash
+flutter pub run flutter_native_splash:create
+flutter pub run flutter_launcher_icons
+```
+
+建议图标素材放在：
+
+```text
+assets/app/icon.png
+```
+
+如果项目暂时没有品牌图，不要随便放一张临时图提交。真实项目早期用系统默认图标，比提交一张以后要清理的假图更稳。
+
+### 11.3 新增通用库的原则
+
+新增三方库时，优先遵循这几条：
+
+- 能封装就封装，业务层不要直接依赖三方库。
+- 优先放到 `core/` 或 `shared/`，再通过接口暴露给业务模块。
+- Repository 只依赖抽象服务，比如 `ApiService`、`DatabaseService`、`NetworkStatusService`。
+- ViewModel 不直接操作 Dio、SQLite、permission_handler、connectivity_plus。
+- 新增通用能力时同步补 README 和测试。
+
+当前不接崩溃上报。`CrashReporter` 保留为统一入口，后续确定平台后再接 Firebase Crashlytics、Sentry 或 Bugly。
 - 页面上关键文案或按钮是否存在。
 
 ### 10.7 当前已有测试示例
