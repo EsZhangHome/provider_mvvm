@@ -9,7 +9,7 @@
 //    - 适合：ViewModel（每个页面需要独立的实例和状态）
 //
 // 注册顺序：
-// 先注册底层依赖（ApiService、DatabaseService），再注册上层依赖（Repository、ViewModel），
+// 先注册底层依赖（ApiService、DatabaseService 等），再注册上层依赖（Repository、ViewModel），
 // 因为上层依赖需要从容器中获取底层依赖。
 //
 // 使用方式：
@@ -17,7 +17,7 @@
 // // 在页面中获取 ViewModel
 // final viewModel = locator<HomeViewModel>();
 //
-// // 在 Repository 中获取 ApiService / DatabaseService
+// // 在 Repository 中获取 ApiService / DatabaseService / PermissionService 等
 // final apiService = locator<ApiService>();
 // ```
 //
@@ -34,10 +34,13 @@ import '../../features/login/repository/login_repository.dart';
 import '../../features/login/view_model/login_view_model.dart';
 import '../../features/profile/repository/profile_repository.dart';
 import '../../features/profile/view_model/profile_view_model.dart';
+import '../app/app_info_service.dart';
 import '../database/database_service.dart';
 import '../database/sqlite_database_service.dart';
 import '../network/api_client.dart';
 import '../network/api_service.dart';
+import '../network/network_status_service.dart';
+import '../permission/permission_service.dart';
 
 /// 全局 get_it 实例，可在 App 任何地方通过 locator<T>() 获取依赖。
 ///
@@ -55,7 +58,7 @@ final GetIt locator = GetIt.instance;
 /// 再调用 setupServiceLocator() 注册其他默认依赖。
 ///
 /// 注册顺序：
-/// 1. ApiService、DatabaseService（底层服务）
+/// 1. ApiService、DatabaseService、NetworkStatusService 等底层服务
 /// 2. Repository（数据仓库层，依赖 ApiService）
 /// 3. ViewModel（页面状态管理，依赖 Repository）
 Future<void> setupServiceLocator() async {
@@ -71,6 +74,30 @@ Future<void> setupServiceLocator() async {
   // Repository 依赖 DatabaseService，而不是直接依赖 sqflite，方便后续测试替换
   if (!locator.isRegistered<DatabaseService>()) {
     locator.registerLazySingleton<DatabaseService>(SqliteDatabaseService.new);
+  }
+
+  // ---- 第 1 层：网络状态服务 ----
+  // 统一封装 connectivity_plus，业务代码不要直接依赖三方库
+  if (!locator.isRegistered<NetworkStatusService>()) {
+    locator.registerLazySingleton<NetworkStatusService>(
+      ConnectivityNetworkStatusService.new,
+    );
+  }
+
+  // ---- 第 1 层：权限服务 ----
+  // 统一封装 permission_handler，便于后续统一权限文案和测试 fake
+  if (!locator.isRegistered<PermissionService>()) {
+    locator.registerLazySingleton<PermissionService>(
+      PermissionHandlerService.new,
+    );
+  }
+
+  // ---- 第 1 层：App 信息服务 ----
+  // 统一封装 package_info_plus，关于页、日志、崩溃上报都可以复用
+  if (!locator.isRegistered<AppInfoService>()) {
+    locator.registerLazySingleton<AppInfoService>(
+      PackageInfoAppInfoService.new,
+    );
   }
 
   // ---- 第 2 层：数据仓库 ----
