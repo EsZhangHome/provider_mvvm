@@ -867,7 +867,256 @@ flutter run --dart-define=ENV_USE_HTTP_STATUS=true
 flutter run --dart-define=ENV_API_SUCCESS_CODE=200
 ```
 
-## 10. 常用命令
+## 10. 如何编写单元测试
+
+这个项目的单元测试重点是：**测试业务逻辑，不测试真实网络**。
+
+因此测试 ViewModel 时，不要真的请求 Dio，也不要直接手动 `new ViewModel(FakeRepository())`。推荐做法是：
+
+```text
+测试中注册 fake Repository
+  -> 通过 get_it 注册 ViewModel
+  -> 从 locator 获取 ViewModel
+  -> 调用 ViewModel 方法
+  -> 断言 ViewModel 暴露给 View 的字段
+```
+
+这样测试创建链路和真实页面保持一致：
+
+```text
+真实页面：
+BasePage create -> locator<HomeViewModel>() -> HomeRepositoryImpl -> ApiService
+
+单元测试：
+locator<HomeViewModel>() -> FakeHomeRepository
+```
+
+差别只在于测试里把真实 Repository 替换成 fake Repository。
+
+### 10.1 测试目录建议
+
+测试目录建议和 `lib/features` 对齐：
+
+```text
+test/
+  features/
+    login/
+      login_view_model_test.dart
+    home/
+      home_view_model_test.dart
+```
+
+这样别人看到测试文件，就能马上知道它对应哪个业务模块。
+
+### 10.2 ViewModel 单元测试写法
+
+以 `LoginViewModel` 为例。
+
+第一步：写一个 fake Repository。
+
+```dart
+class FakeLoginRepository implements LoginRepository {
+  @override
+  Future<LoginResponse> login(
+    LoginRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    return const LoginResponse(
+      token: 'fake_token',
+      user: UserModel(
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+      ),
+    );
+  }
+}
+```
+
+第二步：在 `setUp` 里注册 fake。
+
+```dart
+setUp(() async {
+  await locator.reset();
+
+  locator.registerLazySingleton<LoginRepository>(
+    FakeLoginRepository.new,
+  );
+
+  locator.registerFactory<LoginViewModel>(
+    () => LoginViewModel(locator<LoginRepository>()),
+  );
+});
+```
+
+第三步：在 `tearDown` 里清理容器。
+
+```dart
+tearDown(() async {
+  await locator.reset();
+});
+```
+
+第四步：从 `locator` 获取 ViewModel 并测试。
+
+```dart
+test('login view model uses fake repository registered in get_it', () async {
+  final viewModel = locator<LoginViewModel>();
+
+  final success = await viewModel.login('test@example.com', '123456');
+
+  expect(success, isTrue);
+  expect(viewModel.token, 'fake_token');
+  expect(viewModel.user?.name, 'Test User');
+});
+```
+
+### 10.3 列表页 ViewModel 测试写法
+
+以 `HomeViewModel` 为例。
+
+```dart
+class FakeHomeRepository implements HomeRepository {
+  @override
+  Future<List<HomeBanner>> fetchBanners({
+    CancelToken? cancelToken,
+  }) async {
+    return const [
+      HomeBanner(id: '1', title: 'Fake Banner', imageUrl: ''),
+    ];
+  }
+}
+```
+
+测试中注册：
+
+```dart
+setUp(() async {
+  await locator.reset();
+
+  locator.registerLazySingleton<HomeRepository>(
+    FakeHomeRepository.new,
+  );
+
+  locator.registerFactory<HomeViewModel>(
+    () => HomeViewModel(locator<HomeRepository>()),
+  );
+});
+```
+
+断言 ViewModel 暴露给 View 的字段：
+
+```dart
+test('home view model uses fake repository registered in get_it', () async {
+  final viewModel = locator<HomeViewModel>();
+
+  await viewModel.loadHome();
+
+  expect(viewModel.bannerList, hasLength(1));
+  expect(viewModel.bannerList.first.title, 'Fake Banner');
+});
+```
+
+### 10.4 为什么测试里也要用 get_it
+
+不要这样写：
+
+```dart
+final viewModel = LoginViewModel(FakeLoginRepository());
+```
+
+虽然它能测，但它绕过了项目真实的依赖创建方式。
+
+推荐这样写：
+
+```dart
+locator.registerLazySingleton<LoginRepository>(
+  FakeLoginRepository.new,
+);
+
+locator.registerFactory<LoginViewModel>(
+  () => LoginViewModel(locator<LoginRepository>()),
+);
+
+final viewModel = locator<LoginViewModel>();
+```
+
+好处：
+
+- 测试路径和真实页面路径一致。
+- 可以验证 DI 注册方式是否合理。
+- 后续 ViewModel 构造参数变化时，测试更容易暴露问题。
+- Repository / ApiService 可以逐层替换 fake 实现。
+
+### 10.5 setUp / tearDown 注意点
+
+每个测试文件都建议写：
+
+```dart
+setUp(() async {
+  await locator.reset();
+  // 注册当前测试需要的 fake 和 ViewModel
+});
+
+tearDown(() async {
+  await locator.reset();
+});
+```
+
+原因：
+
+- 避免不同测试之间共享同一个 Repository 或 ViewModel。
+- 避免上一个测试注册的 fake 影响下一个测试。
+- 保证每个测试都是独立的。
+
+如果是 Widget 测试，并且涉及本地存储，还要 mock 存储：
+
+```dart
+SharedPreferences.setMockInitialValues({});
+FlutterSecureStorage.setMockInitialValues({});
+await LocalStorage.init();
+await setupServiceLocator();
+```
+
+### 10.6 应该测什么，不应该测什么
+
+ViewModel 单元测试应该测：
+
+- 调用成功后，ViewModel 暴露给 View 的字段是否正确。
+- 空数据时是否进入 empty 状态。
+- 业务失败时是否进入 error 状态。
+- 表单校验逻辑是否正确。
+- 是否调用了 fake Repository 的预期方法。
+
+ViewModel 单元测试不应该测：
+
+- Dio 真实网络请求。
+- UI 具体长什么样。
+- GoRouter 是否真的跳转。
+- SharedPreferences / SecureStorage 的真实读写。
+
+Repository 单元测试可以测：
+
+- JSON 是否能正确转 Model。
+- 缓存命中时是否优先返回缓存。
+- fake ApiService 返回不同数据时，Repository 是否转换正确。
+
+Widget 测试可以测：
+
+- 未登录时是否显示登录页。
+- 登录按钮点击后是否进入主页面。
+- 页面上关键文案或按钮是否存在。
+
+### 10.7 当前已有测试示例
+
+可以参考：
+
+- [test/features/login/login_view_model_test.dart](test/features/login/login_view_model_test.dart)
+- [test/features/home/home_view_model_test.dart](test/features/home/home_view_model_test.dart)
+- [test/features/login/login_page_navigation_test.dart](test/features/login/login_page_navigation_test.dart)
+- [test/core/router/app_router_test.dart](test/core/router/app_router_test.dart)
+
+## 11. 常用命令
 
 安装依赖：
 
@@ -901,7 +1150,7 @@ flutter run \
   --dart-define=ENV_RETRY_COUNT=2
 ```
 
-## 11. 开发约定
+## 12. 开发约定
 
 为了让项目长期保持清晰，请遵守这些约定：
 
@@ -919,8 +1168,9 @@ flutter run \
 - 间距优先使用 `AppSpacing`。
 - 圆角优先使用 `AppRadius`。
 - ViewModel 和 Repository 优先通过 `get_it` 注册和获取。
+- 单元测试中也通过 `get_it` 注册 fake 实现，再通过 `locator<ViewModel>()` 获取被测对象。
 
-## 12. 一句话理解这个架构
+## 13. 一句话理解这个架构
 
 这个项目的核心思想是：
 
