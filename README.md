@@ -9,6 +9,7 @@
 - Dio
 - GoRouter
 - get_it
+- sqflite
 - shared_preferences
 - flutter_secure_storage
 
@@ -23,7 +24,7 @@ lib/
   main.dart
   app.dart
 
-  core/        # 基础能力层：网络、路由、配置、存储、主题、工具、DI
+  core/        # 基础能力层：网络、数据库、路由、配置、存储、主题、工具、DI
   global/      # 全局 Provider：登录状态、主题状态
   shared/      # 跨模块复用的 Model 和 Widget
   features/    # 业务模块：login、main、home、community、mine 等
@@ -47,8 +48,9 @@ lib/
 1. 注册全局异常兜底。
 2. 调用 `WidgetsFlutterBinding.ensureInitialized()`。
 3. 初始化本地存储 `LocalStorage.init()`。
-4. 初始化依赖注入 `setupServiceLocator()`。
-5. 执行 `runApp(const MyApp())`。
+4. 初始化本地数据库 `AppDatabase.init()`。
+5. 初始化依赖注入 `setupServiceLocator()`。
+6. 执行 `runApp(const MyApp())`。
 
 简化流程如下：
 
@@ -56,6 +58,7 @@ lib/
 main()
   -> FlutterError / PlatformDispatcher 异常兜底
   -> LocalStorage.init()
+  -> AppDatabase.init()
   -> setupServiceLocator()
   -> runApp(MyApp)
 ```
@@ -275,7 +278,225 @@ flutter run --dart-define=ENV_ENABLE_CHARLES_PROXY=false
 
 关闭后 Dio 会恢复正常直连，不再经过 Charles。
 
-### 3.3 core/network
+### 3.3 core/database
+
+路径：[lib/core/database](lib/core/database)
+
+数据库层使用 `sqflite`，主要负责 App 本地 SQLite 数据库能力。
+
+这里要先分清三种本地存储：
+
+- `SharedPreferences`：适合保存主题、简单开关、小字符串。
+- `flutter_secure_storage`：适合保存 token 这类敏感信息。
+- `sqflite`：适合保存列表缓存、离线数据、结构化数据。
+
+不要把所有本地数据都塞进 `SharedPreferences`。一旦数据有表结构、查询条件、分页缓存、离线读取需求，就应该放到数据库层。
+
+#### 为什么选择 sqflite
+
+这个项目选择 `sqflite` 作为默认数据库方案。
+
+原因是：
+
+- 使用人数多，Android/iOS 适配成熟。
+- 接入成本低，新人容易理解。
+- 和当前 `Repository + get_it` 架构很容易组合。
+- 不需要代码生成，适合作为通用项目骨架。
+
+如果以后项目出现非常复杂的关联查询、强类型 SQL、响应式数据库监听，可以再评估 `drift`。当前骨架优先保持简单、稳定、容易上手。
+
+#### 数据库目录说明
+
+核心文件：
+
+- `app_database.dart`：数据库初始化入口，负责打开数据库文件。
+- `database_service.dart`：数据库能力抽象接口，Repository 只依赖它。
+- `sqlite_database_service.dart`：`DatabaseService` 的 sqflite 实现。
+- `database_tables.dart`：表名、字段名集中管理。
+- `database_migrations.dart`：建表和版本升级脚本。
+- `database_exception.dart`：数据库异常封装。
+
+这几个文件的关系是：
+
+```text
+main.dart
+  -> AppDatabase.init()
+  -> 打开 SQLite 数据库
+  -> 执行 DatabaseMigrations
+
+service_locator.dart
+  -> 注册 DatabaseService
+  -> 默认实现 SqliteDatabaseService
+
+Repository
+  -> 依赖 DatabaseService
+  -> 不直接 import sqflite
+```
+
+#### 数据流应该怎么走
+
+数据库不要直接给页面用。
+
+正确的数据流：
+
+```text
+View
+  -> ViewModel
+  -> Repository
+  -> DatabaseService
+  -> SQLite
+```
+
+也就是说：
+
+- `View` 只负责展示和用户操作。
+- `ViewModel` 只负责页面状态和业务流程。
+- `Repository` 决定数据来自网络、数据库，还是两者结合。
+- `DatabaseService` 只负责本地数据库读写。
+
+不要这样做：
+
+```text
+View 直接查数据库
+ViewModel 直接写 SQL
+Repository 直接 import sqflite
+```
+
+这样会让页面、状态、存储混在一起，后面测试和维护都会变麻烦。
+
+#### Repository 如何同时使用网络和数据库
+
+以订单模块为例，Repository 可以同时依赖 `ApiService` 和 `DatabaseService`：
+
+```dart
+class OrderRepositoryImpl implements OrderRepository {
+  OrderRepositoryImpl({
+    required ApiService apiService,
+    required DatabaseService databaseService,
+  })  : _apiService = apiService,
+        _databaseService = databaseService;
+
+  final ApiService _apiService;
+  final DatabaseService _databaseService;
+}
+```
+
+常见策略是：
+
+```text
+先读数据库缓存
+  -> 页面尽快展示旧数据
+
+再请求网络
+  -> 请求成功后写入数据库
+  -> 页面展示最新数据
+```
+
+这种写法能兼顾打开速度和数据新鲜度。
+
+#### 通用缓存表示例
+
+项目默认创建了一张通用缓存表：
+
+```text
+app_cache
+  cache_key     TEXT PRIMARY KEY
+  cache_value   TEXT NOT NULL
+  updated_at    INTEGER NOT NULL
+```
+
+它适合保存简单 JSON 缓存，比如：
+
+- 首页 banner 快照
+- 字典配置
+- 筛选条件配置
+- 一些不复杂的接口响应
+
+如果数据结构复杂，比如订单、商品、消息列表，建议单独建表，不要全部塞进 `app_cache`。
+
+#### 新增一张表怎么做
+
+比如你要新增订单表 `orders`。
+
+第一步：在 [lib/core/database/database_tables.dart](lib/core/database/database_tables.dart) 中增加表名和字段名：
+
+```dart
+static const String orders = 'orders';
+static const String orderId = 'order_id';
+static const String orderTitle = 'title';
+static const String orderUpdatedAt = 'updated_at';
+```
+
+第二步：在 [lib/core/database/database_migrations.dart](lib/core/database/database_migrations.dart) 中把版本号加 1：
+
+```dart
+static const int currentVersion = 2;
+```
+
+第三步：给新版本增加 migration：
+
+```dart
+case 2:
+  await _createVersion2(db);
+  break;
+```
+
+然后写建表 SQL：
+
+```dart
+static Future<void> _createVersion2(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS ${DatabaseTables.orders} (
+      ${DatabaseTables.orderId} TEXT PRIMARY KEY,
+      ${DatabaseTables.orderTitle} TEXT NOT NULL,
+      ${DatabaseTables.orderUpdatedAt} INTEGER NOT NULL
+    )
+  ''');
+}
+```
+
+注意：已经上线的 App 不要随便删表重建。新增字段、新增表、创建索引都应该通过 migration 完成。
+
+#### 新模块怎么接入数据库
+
+比如 `order` 模块需要本地缓存。
+
+推荐顺序：
+
+```text
+1. 在 database_tables.dart 中定义 orders 表和字段
+2. 在 database_migrations.dart 中新增 migration
+3. 在 OrderRepositoryImpl 中注入 DatabaseService
+4. Repository 里把数据库 Map 转成 OrderModel
+5. ViewModel 继续只调用 OrderRepository
+6. View 继续只调用 OrderViewModel
+```
+
+注册依赖时：
+
+```dart
+locator.registerLazySingleton<OrderRepository>(
+  () => OrderRepositoryImpl(
+    apiService: locator(),
+    databaseService: locator(),
+  ),
+);
+```
+
+这样写之后，`OrderViewModel` 不需要知道订单数据是从网络来的，还是从数据库来的。
+
+#### 数据库层的使用边界
+
+请记住这几条：
+
+- 不要在 `View` 里查数据库。
+- 不要在 `ViewModel` 里写 SQL。
+- 不要让 `Repository` 直接依赖 `sqflite`。
+- 表名和字段名统一放在 `DatabaseTables`。
+- 数据库版本升级统一放在 `DatabaseMigrations`。
+- 单元测试里用 fake `DatabaseService`，不要真的打开 SQLite。
+
+### 3.4 core/network
 
 路径：[lib/core/network](lib/core/network)
 
@@ -825,10 +1046,23 @@ class OrderModel {
       title: asOr(json['title'], ''),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+    };
+  }
 }
 ```
 
 ### 3. 定义 Repository 接口和实现
+
+如果 Repository 里需要把列表缓存成 JSON 字符串，记得导入：
+
+```dart
+import 'dart:convert';
+```
 
 ```dart
 abstract class OrderRepository {
@@ -836,13 +1070,35 @@ abstract class OrderRepository {
 }
 
 class OrderRepositoryImpl implements OrderRepository {
-  OrderRepositoryImpl({ApiService? apiService})
-      : _apiService = apiService ?? ApiClient.instance;
+  OrderRepositoryImpl({
+    required ApiService apiService,
+    required DatabaseService databaseService,
+  })  : _apiService = apiService,
+        _databaseService = databaseService;
 
   final ApiService _apiService;
+  final DatabaseService _databaseService;
 
   @override
   Future<List<OrderModel>> fetchOrders({CancelToken? cancelToken}) async {
+    // 示例：先查询数据库缓存，让页面在弱网时也有数据可展示。
+    final cachedRows = await _databaseService.query(
+      DatabaseTables.appCache,
+      where: '${DatabaseTables.cacheKey} = ?',
+      whereArgs: ['orders'],
+      limit: 1,
+    );
+
+    if (cachedRows.isNotEmpty) {
+      final cacheValue = cachedRows.first[DatabaseTables.cacheValue] as String;
+      final cachedJson = jsonDecode(cacheValue) as List<dynamic>;
+      final cachedOrders = asList(cachedJson, OrderModel.fromJson);
+
+      if (cachedOrders.isNotEmpty) {
+        return cachedOrders;
+      }
+    }
+
     final response = await _apiService.get<List<OrderModel>>(
       '/orders',
       cancelToken: cancelToken,
@@ -851,7 +1107,23 @@ class OrderRepositoryImpl implements OrderRepository {
         OrderModel.fromJson,
       ),
     );
-    return response.data ?? [];
+    final orderList = response.data ?? [];
+
+    // 示例：网络成功后，把接口结果写入数据库。
+    // 这里为了演示使用通用缓存表，复杂订单数据建议单独建 orders 表。
+    await _databaseService.insert(
+      DatabaseTables.appCache,
+      {
+        DatabaseTables.cacheKey: 'orders',
+        DatabaseTables.cacheValue: jsonEncode(
+          orderList.map((order) => order.toJson()).toList(),
+        ),
+        DatabaseTables.cacheUpdatedAt: DateTime.now().millisecondsSinceEpoch,
+      },
+      replaceOnConflict: true,
+    );
+
+    return orderList;
   }
 }
 ```
@@ -911,7 +1183,10 @@ class OrderPage extends StatelessWidget {
 
 ```dart
 locator.registerLazySingleton<OrderRepository>(
-  () => OrderRepositoryImpl(apiService: locator()),
+  () => OrderRepositoryImpl(
+    apiService: locator(),
+    databaseService: locator(),
+  ),
 );
 
 locator.registerFactory<OrderViewModel>(
@@ -943,7 +1218,22 @@ flutter run --dart-define=ENV_API_BASE_URL=https://api.your-domain.com
 
 比如 `HomeRepositoryImpl` 中现在使用 `Future.delayed` 模拟接口。接真实后端时，把模拟数据替换成 `_apiService.get / post`。
 
-### 4. 确认响应结构
+### 4. 按需接入本地数据库缓存
+
+如果某个接口需要离线展示、减少重复请求、提升打开速度，可以在对应 Repository 中同时注入 `DatabaseService`。
+
+推荐做法：
+
+```text
+Repository 先读数据库缓存
+  -> 有缓存时先返回缓存
+  -> 没缓存或需要刷新时请求网络
+  -> 网络成功后写入数据库
+```
+
+注意：不要在 ViewModel 里直接操作数据库。ViewModel 仍然只调用 Repository。
+
+### 5. 确认响应结构
 
 如果后端响应不是：
 
@@ -957,7 +1247,7 @@ flutter run --dart-define=ENV_API_BASE_URL=https://api.your-domain.com
 
 需要修改 [lib/core/network/api_response.dart](lib/core/network/api_response.dart)。
 
-### 5. 确认成功码
+### 6. 确认成功码
 
 默认业务成功码是 `0`。
 
@@ -975,7 +1265,7 @@ flutter run --dart-define=ENV_API_SUCCESS_CODE=200
 
 ## 10. 如何编写单元测试
 
-这个项目的单元测试重点是：**测试业务逻辑，不测试真实网络**。
+这个项目的单元测试重点是：**测试业务逻辑，不测试真实网络，也不测试真实数据库**。
 
 因此测试 ViewModel 时，不要真的请求 Dio，也不要直接手动 `new ViewModel(FakeRepository())`。推荐做法是：
 
@@ -991,13 +1281,14 @@ flutter run --dart-define=ENV_API_SUCCESS_CODE=200
 
 ```text
 真实页面：
-BasePage create -> locator<HomeViewModel>() -> HomeRepositoryImpl -> ApiService
+BasePage create -> locator<HomeViewModel>() -> HomeRepositoryImpl -> ApiService / DatabaseService
 
 单元测试：
 locator<HomeViewModel>() -> FakeHomeRepository
 ```
 
 差别只在于测试里把真实 Repository 替换成 fake Repository。
+如果要测试 Repository，则把真实 `ApiService`、真实 `DatabaseService` 替换成 fake。
 
 ### 10.1 测试目录建议
 
@@ -1184,7 +1475,109 @@ await LocalStorage.init();
 await setupServiceLocator();
 ```
 
-### 10.6 应该测什么，不应该测什么
+### 10.6 Repository 测试如何 fake 数据库
+
+Repository 如果同时依赖网络和数据库，不要在单元测试里真的打开 SQLite。
+
+推荐写一个 fake `DatabaseService`：
+
+```dart
+class FakeDatabaseService implements DatabaseService {
+  final Map<String, List<Map<String, Object?>>> tables = {};
+
+  @override
+  Future<int> insert(
+    String table,
+    Map<String, Object?> values, {
+    bool replaceOnConflict = false,
+  }) async {
+    final rows = tables.putIfAbsent(table, () => []);
+    rows.add(values);
+    return rows.length;
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> query(
+    String table, {
+    bool distinct = false,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) async {
+    return tables[table] ?? [];
+  }
+
+  @override
+  Future<int> update(
+    String table,
+    Map<String, Object?> values, {
+    String? where,
+    List<Object?>? whereArgs,
+  }) async {
+    return 0;
+  }
+
+  @override
+  Future<int> delete(
+    String table, {
+    String? where,
+    List<Object?>? whereArgs,
+  }) async {
+    tables.remove(table);
+    return 1;
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> rawQuery(
+    String sql, {
+    List<Object?>? arguments,
+  }) async {
+    return [];
+  }
+
+  @override
+  Future<T> transaction<T>(
+    Future<T> Function(DatabaseService service) action,
+  ) {
+    return action(this);
+  }
+
+  @override
+  Future<void> clearTable(String table) async {
+    tables.remove(table);
+  }
+}
+```
+
+测试 Repository 时可以这样注册：
+
+```dart
+setUp(() async {
+  await locator.reset();
+
+  locator.registerLazySingleton<ApiService>(
+    FakeApiService.new,
+  );
+
+  locator.registerLazySingleton<DatabaseService>(
+    FakeDatabaseService.new,
+  );
+
+  locator.registerLazySingleton<OrderRepository>(
+    () => OrderRepositoryImpl(
+      apiService: locator(),
+      databaseService: locator(),
+    ),
+  );
+});
+```
+
+这样测试的是 Repository 的数据转换和缓存逻辑，不依赖真实网络和真实 SQLite。
+
+### 10.7 应该测什么，不应该测什么
 
 ViewModel 单元测试应该测：
 
@@ -1200,12 +1593,14 @@ ViewModel 单元测试不应该测：
 - UI 具体长什么样。
 - GoRouter 是否真的跳转。
 - SharedPreferences / SecureStorage 的真实读写。
+- SQLite 的真实文件读写。
 
 Repository 单元测试可以测：
 
 - JSON 是否能正确转 Model。
 - 缓存命中时是否优先返回缓存。
 - fake ApiService 返回不同数据时，Repository 是否转换正确。
+- fake DatabaseService 有缓存时，Repository 是否按预期读取缓存。
 
 Widget 测试可以测：
 
