@@ -14,6 +14,7 @@
 // 2. 回调注入：tokenProvider 和 onUnauthorized 由 AuthProvider 注入，网络层不依赖任何业务层
 // 3. 统一解析：_request 方法统一处理 API 响应解析和异常转换
 // 4. 拦截器动态更新：token 或 401 回调变更时，重新组装拦截器链
+// 5. Charles 抓包：通过 EnvConfig 开关控制，默认关闭，不影响正常请求
 //
 // 数据流：
 // Repository → ApiClient.get/post/... → _request → Dio 请求 → 拦截器链 → 后端
@@ -22,7 +23,10 @@
 //                                                  ↓
 //                                         ApiResponse<T> / throw exception
 
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 import '../config/env_config.dart';
 import 'api_exception.dart';
@@ -66,6 +70,8 @@ class ApiClient implements ApiService {
         headers: {'Content-Type': 'application/json'},
       ),
     );
+    // 如果编译参数打开了 Charles 抓包，这里给 Dio 换上带代理的 HttpClient。
+    _configureCharlesProxyIfNeeded();
     // 组装拦截器链
     _resetInterceptors();
   }
@@ -99,6 +105,47 @@ class ApiClient implements ApiService {
 
   /// 暴露 Dio 实例，仅供特殊场景使用（如自定义拦截器）。
   Dio get dio => _dio;
+
+  // ==================== Charles 抓包配置 ====================
+
+  /// 根据 EnvConfig 决定是否给 Dio 配置 Charles 代理。
+  ///
+  /// 这里没有写死 true/false，而是读取编译参数：
+  /// - 默认 false：正常网络请求，不走 Charles
+  /// - 打开 true：所有 Dio 请求都会转发到 Charles，方便查看请求和响应
+  ///
+  /// 注意：这个能力只用于 Android/iOS 调试。项目已经只保留移动端平台，
+  /// 因此可以直接使用 dart:io 的 HttpClient。
+  void _configureCharlesProxyIfNeeded() {
+    if (!EnvConfig.enableCharlesProxy) {
+      return;
+    }
+
+    _dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+
+        // 告诉底层 HttpClient：请求不要直接发给目标服务器，
+        // 而是先转发到 Charles 的 host:port。
+        client.findProxy = (uri) {
+          return 'PROXY ${EnvConfig.charlesProxyHost}:'
+              '${EnvConfig.charlesProxyPort}';
+        };
+
+        // HTTPS 抓包需要证书信任。优先推荐在设备上安装并信任 Charles 根证书。
+        // 如果只是临时调试证书问题，可以用 dart-define 打开这个开关。
+        client.badCertificateCallback = (
+          X509Certificate cert,
+          String host,
+          int port,
+        ) {
+          return EnvConfig.allowCharlesBadCertificate;
+        };
+
+        return client;
+      },
+    );
+  }
 
   // ==================== 回调注入方法 ====================
 

@@ -79,6 +79,54 @@ class EnvConfig {
     defaultValue: 2,
   );
 
+  // ==================== Charles 抓包配置 ====================
+
+  /// 是否启用 Charles 代理抓包。
+  ///
+  /// 默认关闭，正常开发、测试、生产包都不会走代理。
+  /// 只有需要抓接口包时，才通过 --dart-define 临时打开：
+  /// ```bash
+  /// flutter run \
+  ///   --dart-define=ENV_ENABLE_CHARLES_PROXY=true \
+  ///   --dart-define=ENV_CHARLES_PROXY_HOST=192.168.1.10 \
+  ///   --dart-define=ENV_CHARLES_PROXY_PORT=8888
+  /// ```
+  ///
+  /// 注意：
+  /// - iOS 模拟器通常可以用 127.0.0.1 或电脑局域网 IP
+  /// - Android 模拟器访问电脑本机一般用 10.0.2.2
+  /// - 真机需要填写电脑在同一 Wi-Fi 下的局域网 IP
+  static const bool enableCharlesProxy = bool.fromEnvironment(
+    'ENV_ENABLE_CHARLES_PROXY',
+    defaultValue: false,
+  );
+
+  /// Charles 代理地址。
+  ///
+  /// 这里给一个本机默认值，实际使用时建议通过 --dart-define 覆盖成当前电脑 IP。
+  static const String charlesProxyHost = String.fromEnvironment(
+    'ENV_CHARLES_PROXY_HOST',
+    defaultValue: '127.0.0.1',
+  );
+
+  /// Charles 代理端口。
+  ///
+  /// Charles 默认 HTTP Proxy 端口是 8888，如果你在 Charles 里改过端口，
+  /// 这里也要保持一致。
+  static const int charlesProxyPort = int.fromEnvironment(
+    'ENV_CHARLES_PROXY_PORT',
+    defaultValue: 8888,
+  );
+
+  /// 是否允许 Charles 场景下跳过 HTTPS 证书校验。
+  ///
+  /// 默认关闭。推荐优先在手机或模拟器里安装并信任 Charles 根证书。
+  /// 只有临时调试证书问题时才打开，release 包不要开启。
+  static const bool allowCharlesBadCertificate = bool.fromEnvironment(
+    'ENV_ALLOW_CHARLES_BAD_CERTIFICATE',
+    defaultValue: false,
+  );
+
   // ==================== 业务配置 ====================
 
   /// 业务成功码。
