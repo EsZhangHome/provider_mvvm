@@ -1,5 +1,8 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '11.0'
+# Define a global iOS deployment target for all pods.
+#
+# connectivity_plus 5.x requires iOS 12.0 or later. Keeping this explicit avoids
+# CocoaPods falling back to iOS 11.0 and failing during `pod install`.
+platform :ios, '12.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,5 +40,10 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # Keep every Pod target aligned with the app deployment target.
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+    end
   end
 end
