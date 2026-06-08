@@ -155,6 +155,10 @@ final data = await asyncRequest(
 - `receiveTimeout`
 - `sendTimeout`
 - `retryCount`
+- `enableCharlesProxy`
+- `charlesProxyHost`
+- `charlesProxyPort`
+- `allowCharlesBadCertificate`
 - `apiSuccessCode`
 - `useHttpStatus`
 - `isDebug`
@@ -168,6 +172,108 @@ flutter run \
   --dart-define=ENV_API_BASE_URL=https://dev-api.example.com \
   --dart-define=ENV_RETRY_COUNT=3
 ```
+
+#### Charles 抓包怎么用
+
+项目已经把 Charles 代理开关接进了 `EnvConfig` 和 `ApiClient`。
+
+默认情况下不会走 Charles，只有启动 App 时显式传入 `ENV_ENABLE_CHARLES_PROXY=true`，Dio 请求才会被转发到 Charles。
+
+##### 1. 先确认 Charles 代理端口
+
+打开 Charles：
+
+1. 进入 `Proxy` -> `Proxy Settings...`
+2. 确认 `HTTP Proxy` 已开启
+3. 记住端口号，Charles 默认是 `8888`
+
+如果你没有改过 Charles 配置，端口一般不用动。
+
+##### 2. 确认 Flutter 要连接的代理地址
+
+不同运行环境填写的 host 不一样：
+
+| 运行环境 | `ENV_CHARLES_PROXY_HOST` 建议值 |
+| --- | --- |
+| iOS 模拟器 | `127.0.0.1` 或电脑局域网 IP |
+| Android 模拟器 | `10.0.2.2` |
+| iPhone / Android 真机 | 电脑在当前 Wi-Fi 下的局域网 IP |
+
+电脑局域网 IP 可以在系统网络设置里查看。真机和电脑需要连同一个 Wi-Fi。
+
+##### 3. 启动 App 时打开 Charles 代理
+
+iOS 模拟器常用写法：
+
+```bash
+flutter run \
+  --dart-define=ENV_ENABLE_CHARLES_PROXY=true \
+  --dart-define=ENV_CHARLES_PROXY_HOST=127.0.0.1 \
+  --dart-define=ENV_CHARLES_PROXY_PORT=8888
+```
+
+Android 模拟器常用写法：
+
+```bash
+flutter run \
+  --dart-define=ENV_ENABLE_CHARLES_PROXY=true \
+  --dart-define=ENV_CHARLES_PROXY_HOST=10.0.2.2 \
+  --dart-define=ENV_CHARLES_PROXY_PORT=8888
+```
+
+真机常用写法，把 `192.168.1.10` 换成你自己电脑的局域网 IP：
+
+```bash
+flutter run \
+  --dart-define=ENV_ENABLE_CHARLES_PROXY=true \
+  --dart-define=ENV_CHARLES_PROXY_HOST=192.168.1.10 \
+  --dart-define=ENV_CHARLES_PROXY_PORT=8888
+```
+
+##### 4. 在 Charles 中允许设备连接
+
+第一次连接时，Charles 可能会弹出是否允许该设备访问代理。
+
+选择 `Allow` 后，请求才会出现在 Charles 的会话列表里。
+
+如果没有弹窗，可以检查：
+
+- App 是否真的传了 `ENV_ENABLE_CHARLES_PROXY=true`
+- host 是否填对
+- Charles 的 `Proxy` -> `macOS Proxy` 不影响这里，项目使用的是 Dio 自己的代理配置
+- 手机和电脑是否在同一个网络
+
+##### 5. 抓 HTTPS 接口
+
+如果接口是 HTTPS，通常还需要安装并信任 Charles 根证书：
+
+1. 在 Charles 中进入 `Help` -> `SSL Proxying` -> `Install Charles Root Certificate`
+2. 按 Charles 提示安装证书
+3. 在设备或模拟器中信任该证书
+4. 在 Charles 中进入 `Proxy` -> `SSL Proxying Settings...`
+5. 添加需要抓包的域名，比如 `api.example.com:443`
+
+如果只是临时调试证书问题，也可以打开证书跳过开关：
+
+```bash
+flutter run \
+  --dart-define=ENV_ENABLE_CHARLES_PROXY=true \
+  --dart-define=ENV_CHARLES_PROXY_HOST=127.0.0.1 \
+  --dart-define=ENV_CHARLES_PROXY_PORT=8888 \
+  --dart-define=ENV_ALLOW_CHARLES_BAD_CERTIFICATE=true
+```
+
+这个开关只建议本地临时使用，发布包不要开启。
+
+##### 6. 关闭 Charles 代理
+
+不传 `ENV_ENABLE_CHARLES_PROXY`，或者显式传 `false` 即可关闭：
+
+```bash
+flutter run --dart-define=ENV_ENABLE_CHARLES_PROXY=false
+```
+
+关闭后 Dio 会恢复正常直连，不再经过 Charles。
 
 ### 3.3 core/network
 
