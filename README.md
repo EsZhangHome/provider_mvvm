@@ -1830,7 +1830,175 @@ assets/app/icon.png
 
 如果项目暂时没有品牌图，不要随便放一张临时图提交。真实项目早期用系统默认图标，比提交一张以后要清理的假图更稳。
 
-### 11.3 新增通用库的原则
+### 11.3 Mason 命令行生成业务模块
+
+项目后续会频繁新增业务模块，比如 `order`、`product`、`message`。
+
+每个模块都建议保持同样结构：
+
+```text
+features/order/
+  model/
+    order_model.dart
+  repository/
+    order_repository.dart
+  view_model/
+    order_view_model.dart
+  view/
+    order_page.dart
+```
+
+如果每次都手动创建这些文件，很容易出现命名不统一、目录漏建、基础代码风格不一致的问题。
+
+推荐使用 `mason_cli` 做命令行模板生成。
+
+#### 1. 安装 Mason
+
+Mason 是命令行工具，不需要写进项目依赖。
+
+全局安装：
+
+```bash
+dart pub global activate mason_cli
+```
+
+如果终端提示找不到 `mason` 命令，需要把 pub global bin 加到 PATH。
+
+常见路径：
+
+```bash
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+```
+
+可以写到 `~/.zshrc` 或 `~/.bashrc` 中。
+
+验证安装：
+
+```bash
+mason --version
+```
+
+#### 2. 初始化 Mason
+
+在项目根目录执行：
+
+```bash
+mason init
+```
+
+执行后会生成：
+
+```text
+mason.yaml
+```
+
+后续所有 brick 都会登记在 `mason.yaml` 里。
+
+#### 3. 创建 feature 模块模板
+
+推荐把模板放到：
+
+```text
+bricks/feature_module/
+```
+
+创建 brick：
+
+```bash
+mason new feature_module
+```
+
+如果命令在当前目录生成了 `feature_module`，可以按团队习惯移动到 `bricks/feature_module`，然后在 `mason.yaml` 中登记：
+
+```yaml
+bricks:
+  feature_module:
+    path: bricks/feature_module
+```
+
+#### 4. 模板建议生成哪些文件
+
+`feature_module` brick 建议生成：
+
+```text
+lib/features/{{name.snakeCase()}}/
+  model/
+    {{name.snakeCase()}}_model.dart
+  repository/
+    {{name.snakeCase()}}_repository.dart
+  view_model/
+    {{name.snakeCase()}}_view_model.dart
+  view/
+    {{name.snakeCase()}}_page.dart
+```
+
+比如生成订单模块：
+
+```bash
+mason make feature_module --name order
+```
+
+期望生成：
+
+```text
+lib/features/order/
+  model/
+    order_model.dart
+  repository/
+    order_repository.dart
+  view_model/
+    order_view_model.dart
+  view/
+    order_page.dart
+```
+
+#### 5. 模板代码应该遵守当前架构
+
+生成出来的代码建议保持这些规则：
+
+- `Page` 使用 `BasePage<XXXViewModel>`。
+- `ViewModel` 继承 `BaseViewModel`。
+- `ViewModel` 只调用 `Repository`，不直接调用 Dio 或数据库。
+- `Repository` 依赖 `ApiService`、`DatabaseService` 等抽象服务。
+- `Model` 使用 `json_serializable`。
+- 文件顶部保留简短路径注释，方便新人定位。
+
+#### 6. 生成模块后还需要手动做什么
+
+Mason 负责生成模块文件，但下面几步通常需要开发者确认：
+
+1. 在 [lib/core/di/service_locator.dart](lib/core/di/service_locator.dart) 注册 Repository 和 ViewModel。
+2. 在 [lib/core/router/route_paths.dart](lib/core/router/route_paths.dart) 增加路由常量。
+3. 在 [lib/core/router/app_router.dart](lib/core/router/app_router.dart) 增加 `GoRoute`。
+4. 如果新增了本地数据库表，在 `DatabaseTables` 和 `DatabaseMigrations` 中补表结构。
+5. 如果新增了 `@JsonSerializable()` Model，运行代码生成。
+
+常用命令：
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+flutter analyze
+flutter test
+```
+
+#### 7. 为什么先用 Mason，不急着写 VSCode 插件
+
+Mason 更适合当前阶段：
+
+- 命令行即可使用，团队成员不用安装自研插件。
+- 模板文件直接提交到项目，版本跟项目一起走。
+- 维护成本低，适合快速迭代模板。
+- 后续如果确实需要 VSCode 一键生成，可以让插件内部调用 Mason。
+
+所以推荐路线是：
+
+```text
+先维护 Mason brick
+  -> 团队稳定使用
+  -> 再考虑包一层 VSCode 插件
+```
+
+### 11.4 新增通用库的原则
 
 新增三方库时，优先遵循这几条：
 
