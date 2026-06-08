@@ -23,6 +23,67 @@
 当前项目保持 Dart SDK `>=2.19.6 <3.0.0`，所以依赖版本选择的是兼容旧 SDK 的稳定版本，不追最新版。
 如果后续升级到 Dart 3，再统一评估依赖大版本升级。
 
+## 0. 大纲导航
+
+- [0.1 当前依赖库说明](#01-当前依赖库说明)
+- [1. 项目整体分层](#1-项目整体分层)
+- [2. 启动流程](#2-启动流程)
+- [3. 核心目录说明](#3-核心目录说明)
+  - [3.1 core/base](#31-corebase)
+  - [3.2 core/config](#32-coreconfig)
+  - [3.3 core/database](#33-coredatabase)
+  - [3.4 core/network](#34-corenetwork)
+  - [3.5 core/permission](#35-corepermission)
+  - [3.6 core/app](#36-coreapp)
+  - [3.7 core/router](#37-corerouter)
+  - [3.8 core/storage](#38-corestorage)
+  - [3.9 core/di](#39-coredi)
+  - [3.10 core/l10n](#310-corel10n)
+  - [3.11 core/theme](#311-coretheme)
+  - [3.12 core/utils](#312-coreutils)
+- [4. global 层](#4-global-层)
+- [5. shared 层](#5-shared-层)
+- [6. features 业务模块](#6-features-业务模块)
+- [7. MVVM + Repository 数据流](#7-mvvm--repository-数据流)
+- [8. 新增业务模块应该怎么做](#8-新增业务模块应该怎么做)
+- [9. 接入真实后端需要改哪里](#9-接入真实后端需要改哪里)
+- [10. 如何编写单元测试](#10-如何编写单元测试)
+- [11. 工程工具和常用命令](#11-工程工具和常用命令)
+- [12. 开发约定](#12-开发约定)
+- [13. 一句话理解这个架构](#13-一句话理解这个架构)
+
+## 0.1 当前依赖库说明
+
+| 库 | 类型 | 主要功能 | 项目中的使用位置 / 封装 |
+| --- | --- | --- | --- |
+| `provider` | 运行依赖 | 全局状态管理和页面依赖注入入口 | `app.dart` 中通过 `MultiProvider` 注入 `AuthProvider`、`ThemeProvider` |
+| `dio` | 运行依赖 | HTTP 请求、拦截器、超时、取消请求、上传下载 | `core/network/api_client.dart`，业务层只依赖 `ApiService` |
+| `go_router` | 运行依赖 | 声明式路由、登录拦截、页面跳转 | `core/router/app_router.dart`、`route_paths.dart` |
+| `get_it` | 运行依赖 | Repository、ViewModel、基础 Service 的依赖注入 | `core/di/service_locator.dart` |
+| `sqflite` | 运行依赖 | Android / iOS 本地 SQLite 数据库 | `core/database`，业务层只依赖 `DatabaseService` |
+| `path` | 运行依赖 | 拼接数据库文件路径 | `core/database/app_database.dart` |
+| `shared_preferences` | 运行依赖 | 保存轻量配置，如主题模式、普通字符串 | `core/storage/local_storage.dart` |
+| `flutter_secure_storage` | 运行依赖 | 安全保存 token 等敏感数据 | `core/storage/token_storage.dart` |
+| `json_annotation` | 运行依赖 | 给 Model 标注 JSON 生成规则 | `UserModel`、`HomeBanner`、`LoginRequest` 等 Model |
+| `json_serializable` | 开发依赖 | 生成 `fromJson / toJson` 代码 | 配合 `build_runner` 生成 `*.g.dart` |
+| `build_runner` | 开发依赖 | Dart 代码生成命令行工具 | 执行 `flutter pub run build_runner build --delete-conflicting-outputs` |
+| `cached_network_image` | 运行依赖 | 网络图片缓存、加载占位、失败占位 | `shared/widgets/app_network_image.dart` |
+| `connectivity_plus` | 运行依赖 | 获取网络连接状态 | `core/network/network_status_service.dart`，业务层只依赖 `NetworkStatusService` |
+| `permission_handler` | 运行依赖 | 申请相机、相册、定位、通知等权限 | `core/permission/permission_service.dart` |
+| `package_info_plus` | 运行依赖 | 获取 App 名称、包名、版本号、构建号 | `core/app/app_info_service.dart` |
+| `flutter_localizations` | SDK 依赖 | Flutter 官方本地化支持 | `app.dart` 中配置中文本地化 |
+| `intl` | 运行依赖 | 国际化、日期数字格式化基础库 | 当前配合本地化能力预留 |
+| `cupertino_icons` | 运行依赖 | iOS 风格图标字体 | Flutter 默认图标依赖 |
+| `flutter_native_splash` | 开发依赖 | 生成 Android / iOS 原生启动图 | README 中提供配置步骤，当前未生成假素材 |
+| `flutter_launcher_icons` | 开发依赖 | 生成 Android / iOS App 图标 | README 中提供配置步骤，当前未生成假素材 |
+| `flutter_lints` | 开发依赖 | Flutter 官方推荐 lint 规则 | `analysis_options.yaml` |
+
+使用原则：
+
+- 业务页面不要直接依赖 `dio`、`sqflite`、`permission_handler`、`connectivity_plus` 等三方库。
+- 三方能力优先封装到 `core/` 或 `shared/`，再通过接口或通用组件给业务模块使用。
+- 新增库时同步补 README，说明它解决什么问题、封装在哪里、业务层应该怎么用。
+
 ## 1. 项目整体分层
 
 项目采用“按基础能力 + 按业务模块”组织代码：
@@ -1760,6 +1821,16 @@ Widget 测试可以测：
 
 - 未登录时是否显示登录页。
 - 登录按钮点击后是否进入主页面。
+- 页面上关键文案或按钮是否存在。
+
+### 10.8 当前已有测试示例
+
+可以参考：
+
+- [test/features/login/login_view_model_test.dart](test/features/login/login_view_model_test.dart)
+- [test/features/home/home_view_model_test.dart](test/features/home/home_view_model_test.dart)
+- [test/features/login/login_page_navigation_test.dart](test/features/login/login_page_navigation_test.dart)
+- [test/core/router/app_router_test.dart](test/core/router/app_router_test.dart)
 
 ## 11. 工程工具和常用命令
 
@@ -2009,18 +2080,8 @@ Mason 更适合当前阶段：
 - 新增通用能力时同步补 README 和测试。
 
 当前不接崩溃上报。`CrashReporter` 保留为统一入口，后续确定平台后再接 Firebase Crashlytics、Sentry 或 Bugly。
-- 页面上关键文案或按钮是否存在。
 
-### 10.7 当前已有测试示例
-
-可以参考：
-
-- [test/features/login/login_view_model_test.dart](test/features/login/login_view_model_test.dart)
-- [test/features/home/home_view_model_test.dart](test/features/home/home_view_model_test.dart)
-- [test/features/login/login_page_navigation_test.dart](test/features/login/login_page_navigation_test.dart)
-- [test/core/router/app_router_test.dart](test/core/router/app_router_test.dart)
-
-## 11. 常用命令
+### 11.5 常用命令
 
 安装依赖：
 
