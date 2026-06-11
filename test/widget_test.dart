@@ -20,4 +20,22 @@ void main() {
     expect(find.text('登录'), findsWidgets);
     expect(find.text('Provider MVVM'), findsOneWidget);
   });
+
+  testWidgets('app does not paint login page while restoring saved session',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'current_user':
+          '{"id":"1","name":"Test User","email":"test@example.com"}',
+    });
+    FlutterSecureStorage.setMockInitialValues({'auth_token': 'saved_token'});
+    await LocalStorage.init();
+    await setupServiceLocator();
+
+    await tester.pumpWidget(const MyApp());
+    await tester.pump();
+
+    expect(find.text('登录'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

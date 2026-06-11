@@ -67,11 +67,23 @@ class AuthRouteGuard implements RouteGuard {
     // ---- 判断当前目标路由 ----
     // 是否是登录页
     final isLoginRoute = state.matchedLocation == RoutePaths.login;
+    // 是否是启动页
+    final isSplashRoute = state.matchedLocation == RoutePaths.splash;
     // 是否是受保护页面（需要登录才能访问）
     final isProtectedRoute = state.matchedLocation == RoutePaths.main ||
         state.matchedLocation == RoutePaths.mainHome ||
         state.matchedLocation == RoutePaths.mainCommunity ||
         state.matchedLocation == RoutePaths.mainMine;
+
+    // ---- 规则 0：恢复登录态期间停留在启动页 ----
+    if (authProvider.isRestoringSession) {
+      return isSplashRoute ? null : RoutePaths.splash;
+    }
+
+    // ---- 规则 0.1：恢复完成后离开启动页 ----
+    if (isSplashRoute) {
+      return authProvider.isLoggedIn ? RoutePaths.main : RoutePaths.login;
+    }
 
     // ---- 规则 1：未登录 → 不能访问受保护页面 ----
     if (!authProvider.isLoggedIn && isProtectedRoute) {

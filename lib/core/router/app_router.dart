@@ -27,6 +27,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/login/view/login_page.dart';
 import '../../features/main/view/main_page.dart';
 import '../../global/auth_provider.dart';
+import '../../shared/widgets/loading_view.dart';
 import '../../shared/widgets/not_found_view.dart';
 import 'route_guard.dart';
 import 'route_paths.dart';
@@ -105,6 +106,12 @@ class AppRouter {
         GoRoute(
           path: RoutePaths.login,
           builder: (context, state) => const LoginPage(),
+        ),
+
+        // 启动页：恢复本地登录态时显示，避免登录页或受保护页面闪现
+        GoRoute(
+          path: RoutePaths.splash,
+          builder: (context, state) => const Scaffold(body: LoadingView()),
         ),
 
         // 主框架页（默认选中首页 Tab）

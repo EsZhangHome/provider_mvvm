@@ -26,6 +26,10 @@ class RoutePaths {
   /// 未登录用户会被重定向到这里。
   static const String login = '/login';
 
+  /// 启动页路径。
+  /// App 正在恢复本地登录态时停留在这里，避免登录页闪现。
+  static const String splash = '/splash';
+
   /// 主框架页路径，登录后的根页面。
   /// MainPage 内部通过 IndexedStack 管理三个 Tab 页面。
   static const String main = '/main';

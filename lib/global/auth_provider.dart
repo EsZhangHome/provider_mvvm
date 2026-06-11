@@ -73,6 +73,9 @@ class AuthProvider extends ChangeNotifier {
   /// 当前登录用户信息，null 表示未登录。
   UserModel? _currentUser;
 
+  /// 是否正在从本地存储恢复登录态。
+  bool _isRestoringSession = false;
+
   // ==================== 公开 getter ====================
 
   /// 当前 token（JWT 等格式的鉴权令牌）。
@@ -80,6 +83,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// 当前登录用户信息。
   UserModel? get currentUser => _currentUser;
+
+  /// 是否正在从本地存储恢复登录态。
+  bool get isRestoringSession => _isRestoringSession;
 
   /// 是否已登录。
   ///
@@ -105,14 +111,20 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // 从安全存储读取 token（异步操作）
-    _token = await TokenStorage.getToken();
+    _isRestoringSession = true;
 
-    // 用户基本信息不属于高敏感数据，放在 SharedPreferences 中便于快速恢复 UI
-    final userJson = LocalStorage.getString(_userKey);
-    if (userJson != null && userJson.isNotEmpty) {
-      _currentUser =
-          UserModel.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+    try {
+      // 从安全存储读取 token（异步操作）
+      _token = await TokenStorage.getToken();
+
+      // 用户基本信息不属于高敏感数据，放在 SharedPreferences 中便于快速恢复 UI
+      final userJson = LocalStorage.getString(_userKey);
+      if (userJson != null && userJson.isNotEmpty) {
+        _currentUser =
+            UserModel.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+      }
+    } finally {
+      _isRestoringSession = false;
     }
 
     // 通知 GoRouter 和所有监听页面，让路由守卫根据恢复的登录状态重定向
