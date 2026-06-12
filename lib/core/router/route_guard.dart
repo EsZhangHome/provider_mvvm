@@ -70,7 +70,8 @@ class AuthRouteGuard implements RouteGuard {
     // 是否是启动页
     final isSplashRoute = state.matchedLocation == RoutePaths.splash;
     // 是否是受保护页面（需要登录才能访问）
-    final isProtectedRoute = state.matchedLocation == RoutePaths.main ||
+    final isProtectedRoute =
+        state.matchedLocation == RoutePaths.main ||
         state.matchedLocation == RoutePaths.mainHome ||
         state.matchedLocation == RoutePaths.mainCommunity ||
         state.matchedLocation == RoutePaths.mainMine;

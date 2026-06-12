@@ -7,8 +7,9 @@ import 'package:provider_mvvm/core/storage/local_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('app starts at login page when there is no token',
-      (tester) async {
+  testWidgets('app starts at login page when there is no token', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
     await LocalStorage.init();
@@ -21,8 +22,9 @@ void main() {
     expect(find.text('Provider MVVM'), findsOneWidget);
   });
 
-  testWidgets('app does not paint login page while restoring saved session',
-      (tester) async {
+  testWidgets('app does not paint login page while restoring saved session', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'current_user':
           '{"id":"1","name":"Test User","email":"test@example.com"}',

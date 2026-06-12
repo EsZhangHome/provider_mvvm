@@ -51,10 +51,8 @@ class AppRouter {
   ///
   /// [authProvider]：全局登录状态提供者，作为 refreshListenable 和守卫参数
   /// [guards]：路由守卫列表，按顺序执行
-  AppRouter(
-    AuthProvider authProvider, {
-    required List<RouteGuard> guards,
-  }) : config = _create(authProvider, guards);
+  AppRouter(AuthProvider authProvider, {required List<RouteGuard> guards})
+    : config = _create(authProvider, guards);
 
   /// GoRouter 实例，传递给 MaterialApp.router 的 routerConfig。
   /// 整个 App 生命周期内保持不变。

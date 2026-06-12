@@ -9,9 +9,7 @@ import 'package:provider_mvvm/features/home/view_model/home_view_model.dart';
 class FakeHomeRepository implements HomeRepository {
   @override
   Future<List<HomeBanner>> fetchBanners({CancelToken? cancelToken}) async {
-    return const [
-      HomeBanner(id: '1', title: 'Fake Banner', imageUrl: ''),
-    ];
+    return const [HomeBanner(id: '1', title: 'Fake Banner', imageUrl: '')];
   }
 }
 
@@ -21,9 +19,7 @@ void main() {
 
     // 和真实 App 一样先注册 Repository，再注册依赖它的 ViewModel。
     // 区别是这里注册的是 FakeHomeRepository，避免单元测试真的请求网络。
-    locator.registerLazySingleton<HomeRepository>(
-      FakeHomeRepository.new,
-    );
+    locator.registerLazySingleton<HomeRepository>(FakeHomeRepository.new);
     locator.registerFactory<HomeViewModel>(
       () => HomeViewModel(locator<HomeRepository>()),
     );

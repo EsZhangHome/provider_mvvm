@@ -57,10 +57,8 @@ enum LoadingStyle {
 ///
 /// 注意：builder 中不需要自己判断 loading/error/empty 状态，
 /// 这些都由 BasePage + StateView 自动处理。
-typedef ViewModelBuilder<VM extends BaseViewModel> = Widget Function(
-  BuildContext context,
-  VM viewModel,
-);
+typedef ViewModelBuilder<VM extends BaseViewModel> =
+    Widget Function(BuildContext context, VM viewModel);
 
 /// 通用页面容器：负责创建 ViewModel、监听状态，并自动切换 loading/error/empty/content。
 ///

@@ -39,7 +39,7 @@ abstract class ProfileRepository {
 /// 接入真实接口后，从 _apiService 获取用户详细资料。
 class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl({ApiService? apiService})
-      : _apiService = apiService ?? ApiClient.instance;
+    : _apiService = apiService ?? ApiClient.instance;
 
   /// 网络服务（当前通过 DI 注入，真实后端接入时使用）
   // ignore: unused_field

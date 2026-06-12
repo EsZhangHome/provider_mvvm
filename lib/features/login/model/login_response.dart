@@ -20,10 +20,7 @@ import '../../../core/utils/json_helper.dart';
 ///
 /// 包含登录成功后的 token（用于鉴权）和 user（用于展示用户信息）。
 class LoginResponse {
-  const LoginResponse({
-    required this.token,
-    required this.user,
-  });
+  const LoginResponse({required this.token, required this.user});
 
   /// 鉴权令牌（JWT 等格式），后续所有请求通过 Authorization header 携带
   final String token;

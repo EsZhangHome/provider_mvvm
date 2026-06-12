@@ -33,11 +33,7 @@ abstract class DatabaseService {
   /// 删除数据。
   ///
   /// 不传 where 会删除整张表，业务代码要谨慎使用。
-  Future<int> delete(
-    String table, {
-    String? where,
-    List<Object?>? whereArgs,
-  });
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs});
 
   /// 查询数据。
   ///
@@ -64,9 +60,7 @@ abstract class DatabaseService {
   /// 在事务中执行多个数据库操作。
   ///
   /// 事务里的操作要使用回调参数 [service]，不要使用外层 DatabaseService。
-  Future<T> transaction<T>(
-    Future<T> Function(DatabaseService service) action,
-  );
+  Future<T> transaction<T>(Future<T> Function(DatabaseService service) action);
 
   /// 清空某张表。
   ///

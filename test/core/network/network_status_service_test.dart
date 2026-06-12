@@ -10,7 +10,7 @@ void main() {
   group('ConnectivityNetworkStatusService', () {
     test('maps wifi to connected status', () {
       final status = ConnectivityNetworkStatusService.mapConnectivityResult(
-        ConnectivityResult.wifi,
+        const [ConnectivityResult.wifi],
       );
 
       expect(status.type, NetworkConnectionType.wifi);
@@ -19,11 +19,29 @@ void main() {
 
     test('maps none to disconnected status', () {
       final status = ConnectivityNetworkStatusService.mapConnectivityResult(
-        ConnectivityResult.none,
+        const [ConnectivityResult.none],
       );
 
       expect(status.type, NetworkConnectionType.none);
       expect(status.isConnected, isFalse);
+    });
+
+    test('maps multiple connectivity results using plugin priority order', () {
+      final status = ConnectivityNetworkStatusService.mapConnectivityResult(
+        const [ConnectivityResult.wifi, ConnectivityResult.mobile],
+      );
+
+      expect(status.type, NetworkConnectionType.mobile);
+      expect(status.isConnected, isTrue);
+    });
+
+    test('maps satellite to connected status', () {
+      final status = ConnectivityNetworkStatusService.mapConnectivityResult(
+        const [ConnectivityResult.satellite],
+      );
+
+      expect(status.type, NetworkConnectionType.satellite);
+      expect(status.isConnected, isTrue);
     });
   });
 }

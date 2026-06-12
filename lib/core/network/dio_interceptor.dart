@@ -25,7 +25,7 @@ import '../utils/logger.dart';
 ///
 /// 工作流程：
 /// 1. 每次请求发出前，调用 tokenProvider 获取最新的 token
-/// 2. 如果 token 不为空，设置 Authorization: Bearer <token>
+/// 2. 如果 token 不为空，设置 `Authorization: Bearer <token>`
 /// 3. 调用 handler.next(options) 继续传递请求
 ///
 /// 为什么使用动态读取而不是缓存：
@@ -72,10 +72,13 @@ class AppLogInterceptor extends Interceptor {
 
   @override
   void onResponse(
-      Response<dynamic> response, ResponseInterceptorHandler handler) {
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
     // 打印状态码和 URL，方便排查接口是否正常返回
     AppLogger.log(
-        'Response ${response.statusCode}: ${response.requestOptions.uri}');
+      'Response ${response.statusCode}: ${response.requestOptions.uri}',
+    );
     handler.next(response);
   }
 
@@ -176,12 +179,9 @@ class UnauthorizedInterceptor extends Interceptor {
 /// - 退避等待：第 1 次重试等 1 秒，第 2 次等 2 秒
 /// - 使用 dio.fetch 复用原始 RequestOptions，保持参数不变
 class RetryInterceptor extends Interceptor {
-  RetryInterceptor({
-    required this.dio,
-    int? retryCount,
-    List<int>? retryDelays,
-  })  : retryCount = retryCount ?? EnvConfig.retryCount,
-        retryDelays = retryDelays ?? const [1, 2];
+  RetryInterceptor({required this.dio, int? retryCount, List<int>? retryDelays})
+    : retryCount = retryCount ?? EnvConfig.retryCount,
+      retryDelays = retryDelays ?? const [1, 2];
 
   /// Dio 实例，用于重新发起请求。
   final Dio dio;
@@ -194,7 +194,9 @@ class RetryInterceptor extends Interceptor {
 
   @override
   Future<void> onError(
-      DioException err, ErrorInterceptorHandler handler) async {
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     // ---- 步骤 1：判断是否应该重试 ----
     // 只有超时和连接失败才重试，业务错误、401、取消等不重试
     if (!_shouldRetry(err)) {
@@ -214,8 +216,10 @@ class RetryInterceptor extends Interceptor {
     // ---- 步骤 3：退避等待 ----
     // 根据重试次数选择对应的延迟时间
     // 如果 retryIndex 超出 retryDelays 长度，使用最后一个延迟值
-    final delaySeconds = retryDelays[
-        retryIndex < retryDelays.length ? retryIndex : retryDelays.length - 1];
+    final delaySeconds =
+        retryDelays[retryIndex < retryDelays.length
+            ? retryIndex
+            : retryDelays.length - 1];
     await Future<void>.delayed(Duration(seconds: delaySeconds));
 
     // ---- 步骤 4：更新重试计数并重新发起请求 ----

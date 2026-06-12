@@ -22,10 +22,7 @@ import '../l10n/app_strings.dart';
 /// ViewModel 只关心 code 和 message，不需要知道 Dio 的复杂错误类型。
 /// 所有网络相关异常最终都会转换为 ApiException 或其子类。
 class ApiException implements Exception {
-  const ApiException({
-    required this.code,
-    required this.message,
-  });
+  const ApiException({required this.code, required this.message});
 
   /// 错误码。
   /// 正数：HTTP 状态码或后端业务码
@@ -66,7 +63,9 @@ class ApiException implements Exception {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
         return const ApiException(
-            code: timeoutError, message: AppStrings.requestTimeout);
+          code: timeoutError,
+          message: AppStrings.requestTimeout,
+        );
 
       // ---- 服务器返回错误 ----
       // HTTP 状态码 >= 400，包括 4xx 和 5xx
@@ -81,25 +80,33 @@ class ApiException implements Exception {
       // 通常是页面销毁时 cancelToken.cancel() 导致
       case DioExceptionType.cancel:
         return const ApiException(
-            code: networkError, message: AppStrings.requestCanceled);
+          code: networkError,
+          message: AppStrings.requestCanceled,
+        );
 
       // ---- 网络连接异常 ----
       // 无网络、DNS 解析失败、连接被拒绝等
       case DioExceptionType.connectionError:
         return const ApiException(
-            code: networkError, message: AppStrings.networkError);
+          code: networkError,
+          message: AppStrings.networkError,
+        );
 
       // ---- 证书校验失败 ----
       // HTTPS 证书无效或过期
       case DioExceptionType.badCertificate:
         return const ApiException(
-            code: networkError, message: AppStrings.certificateError);
+          code: networkError,
+          message: AppStrings.certificateError,
+        );
 
       // ---- 未知错误 ----
       // 无法归类的异常，兜底处理
       case DioExceptionType.unknown:
         return const ApiException(
-            code: unknownError, message: AppStrings.unknownError);
+          code: unknownError,
+          message: AppStrings.unknownError,
+        );
     }
   }
 
@@ -134,10 +141,8 @@ class ApiException implements Exception {
 /// 在 BaseViewModel.asyncRequest 中，BusinessException 会被特殊处理，
 /// 直接使用 userMessage 展示给用户。
 class BusinessException extends ApiException {
-  BusinessException({
-    required int code,
-    required this.userMessage,
-  }) : super(code: code, message: userMessage);
+  BusinessException({required super.code, required this.userMessage})
+    : super(message: userMessage);
 
   /// 后端返回的用户可见错误文案。
   /// 例如："账号已被冻结，请联系客服"、"余额不足"、"权限不足"等。

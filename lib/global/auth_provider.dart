@@ -120,8 +120,9 @@ class AuthProvider extends ChangeNotifier {
       // 用户基本信息不属于高敏感数据，放在 SharedPreferences 中便于快速恢复 UI
       final userJson = LocalStorage.getString(_userKey);
       if (userJson != null && userJson.isNotEmpty) {
-        _currentUser =
-            UserModel.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+        _currentUser = UserModel.fromJson(
+          jsonDecode(userJson) as Map<String, dynamic>,
+        );
       }
     } finally {
       _isRestoringSession = false;

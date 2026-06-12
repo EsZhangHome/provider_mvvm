@@ -134,13 +134,10 @@ class ApiClient implements ApiService {
 
         // HTTPS 抓包需要证书信任。优先推荐在设备上安装并信任 Charles 根证书。
         // 如果只是临时调试证书问题，可以用 dart-define 打开这个开关。
-        client.badCertificateCallback = (
-          X509Certificate cert,
-          String host,
-          int port,
-        ) {
-          return EnvConfig.allowCharlesBadCertificate;
-        };
+        client.badCertificateCallback =
+            (X509Certificate cert, String host, int port) {
+              return EnvConfig.allowCharlesBadCertificate;
+            };
 
         return client;
       },
@@ -330,7 +327,7 @@ class ApiClient implements ApiService {
   /// 处理流程：
   /// 1. 执行 request() 闭包发出 HTTP 请求
   /// 2. 检查响应数据是否为标准 Map 格式
-  ///    - 是：按 ApiResponse<T> 解析，检查业务 code 是否成功
+  ///    - 是：按 `ApiResponse<T>` 解析，检查业务 code 是否成功
   ///    - 否：兼容处理，直接包装为 ApiResponse
   /// 3. 捕获 DioException，转换为 ApiException 抛出
   ///
@@ -395,8 +392,9 @@ class ApiClient implements ApiService {
     _dio.interceptors.clear();
 
     // 1. Token 注入（每次请求前动态读取 token）
-    _dio.interceptors
-        .add(TokenInterceptor(tokenProvider: () => _tokenProvider?.call()));
+    _dio.interceptors.add(
+      TokenInterceptor(tokenProvider: () => _tokenProvider?.call()),
+    );
 
     // 2. 日志打印（debug 模式下打印请求/响应信息）
     _dio.interceptors.add(AppLogInterceptor());
@@ -404,10 +402,12 @@ class ApiClient implements ApiService {
     // 3. 401 处理（仅在设置了回调时添加）
     if (_onUnauthorized != null) {
       // 确保 _unauthorizedGuard 已创建
-      _unauthorizedGuard ??=
-          UnauthorizedGuard(onUnauthorized: _onUnauthorized!);
-      _dio.interceptors
-          .add(UnauthorizedInterceptor(guard: _unauthorizedGuard!));
+      _unauthorizedGuard ??= UnauthorizedGuard(
+        onUnauthorized: _onUnauthorized!,
+      );
+      _dio.interceptors.add(
+        UnauthorizedInterceptor(guard: _unauthorizedGuard!),
+      );
     }
 
     // 4. 网络重试（放在最后，可以捕获前面所有拦截器传下来的网络错误）

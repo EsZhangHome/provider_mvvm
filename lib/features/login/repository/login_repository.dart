@@ -28,10 +28,7 @@ abstract class LoginRepository {
   /// [cancelToken]：取消令牌，页面销毁时取消请求
   ///
   /// 返回 LoginResponse（包含 token 和用户信息）。
-  Future<LoginResponse> login(
-    LoginRequest request, {
-    CancelToken? cancelToken,
-  });
+  Future<LoginResponse> login(LoginRequest request, {CancelToken? cancelToken});
 }
 
 /// 登录数据仓库实现。
@@ -40,7 +37,7 @@ abstract class LoginRepository {
 /// 这些由 ViewModel 和 Page 分别处理。
 class LoginRepositoryImpl implements LoginRepository {
   LoginRepositoryImpl({ApiService? apiService})
-      : _apiService = apiService ?? ApiClient.instance;
+    : _apiService = apiService ?? ApiClient.instance;
 
   /// 网络服务（当前通过 DI 注入，真实后端接入时使用）
   // ignore: unused_field

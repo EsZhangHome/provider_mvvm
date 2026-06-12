@@ -31,10 +31,7 @@ enum AppPermissionStatus {
 
 /// 权限请求结果。
 class AppPermissionResult {
-  const AppPermissionResult({
-    required this.type,
-    required this.status,
-  });
+  const AppPermissionResult({required this.type, required this.status});
 
   /// 权限类型。
   final AppPermissionType type;
@@ -72,20 +69,14 @@ class PermissionHandlerService implements PermissionService {
   Future<AppPermissionResult> check(AppPermissionType type) async {
     final permission = mapPermissionType(type);
     final status = await permission.status;
-    return AppPermissionResult(
-      type: type,
-      status: mapPermissionStatus(status),
-    );
+    return AppPermissionResult(type: type, status: mapPermissionStatus(status));
   }
 
   @override
   Future<AppPermissionResult> request(AppPermissionType type) async {
     final permission = mapPermissionType(type);
     final status = await permission.request();
-    return AppPermissionResult(
-      type: type,
-      status: mapPermissionStatus(status),
-    );
+    return AppPermissionResult(type: type, status: mapPermissionStatus(status));
   }
 
   @override

@@ -57,7 +57,7 @@ T asOr<T>(dynamic value, T defaultValue) {
 ///
 /// 处理流程：
 /// 1. 检查 value 是否为 List 类型，不是则返回空列表
-/// 2. 过滤出类型为 Map<String, dynamic> 的元素
+/// 2. 过滤出类型为 `Map<String, dynamic>` 的元素
 /// 3. 通过 fromJson 回调把每个 Map 转为业务 Model
 ///
 /// 为什么不用 `(json['list'] as List).map((e) => Model.fromJson(e)).toList()`：
@@ -72,10 +72,7 @@ T asOr<T>(dynamic value, T defaultValue) {
 ///   (item) => HomeBanner.fromJson(item),
 /// ); // List<HomeBanner> 类型
 /// ```
-List<T> asList<T>(
-  dynamic value,
-  T Function(Map<String, dynamic>) fromJson,
-) {
+List<T> asList<T>(dynamic value, T Function(Map<String, dynamic>) fromJson) {
   // 步骤 1：检查是否为 List 类型
   if (value is! List) {
     return [];

@@ -62,10 +62,7 @@ class AppNetworkImage extends StatelessWidget {
       return image;
     }
 
-    return ClipRRect(
-      borderRadius: radius,
-      child: image,
-    );
+    return ClipRRect(borderRadius: radius, child: image);
   }
 
   Widget _buildImage(BuildContext context) {
@@ -91,7 +88,7 @@ class AppNetworkImage extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
       child: const SizedBox(
         width: 20,
@@ -105,7 +102,7 @@ class AppNetworkImage extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
       child: Icon(
         Icons.image_not_supported_outlined,

@@ -7,16 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider_mvvm/shared/widgets/app_network_image.dart';
 
 void main() {
-  testWidgets('app network image shows fallback when url is empty',
-      (tester) async {
+  testWidgets('app network image shows fallback when url is empty', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: AppNetworkImage(
-            imageUrl: '',
-            width: 100,
-            height: 80,
-          ),
+          body: AppNetworkImage(imageUrl: '', width: 100, height: 80),
         ),
       ),
     );

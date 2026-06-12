@@ -34,8 +34,11 @@ class EmptyView extends StatelessWidget {
         children: [
           // 空数据图标：使用弱提示图标，不打断用户
           // hintColor 让图标颜色更柔和，区别于错误状态
-          Icon(Icons.inbox_outlined,
-              size: 48, color: Theme.of(context).hintColor),
+          Icon(
+            Icons.inbox_outlined,
+            size: 48,
+            color: Theme.of(context).hintColor,
+          ),
           const SizedBox(height: 12),
           // 提示文案
           Text(message),

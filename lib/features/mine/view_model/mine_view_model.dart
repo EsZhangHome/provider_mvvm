@@ -43,14 +43,12 @@ class MineViewModel extends BaseViewModel {
     }
 
     // ---- 步骤 2：加载数据 ----
-    final loadedUser = await asyncRequest<UserModel>(
-      () async {
-        // 当前没有独立"我的页"接口，先用当前登录用户模拟一次异步加载
-        // 后续接真实接口时，把这里替换为 MineRepository.fetchMine
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        return currentUser;
-      },
-    );
+    final loadedUser = await asyncRequest<UserModel>(() async {
+      // 当前没有独立"我的页"接口，先用当前登录用户模拟一次异步加载
+      // 后续接真实接口时，把这里替换为 MineRepository.fetchMine
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      return currentUser;
+    });
 
     // ---- 步骤 3：保存结果 ----
     if (loadedUser != null) {

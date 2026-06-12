@@ -134,10 +134,7 @@ class _AppViewState extends State<_AppView> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('zh', 'CN'),
-            Locale('en', 'US'),
-          ],
+          supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
         );
       },
     );

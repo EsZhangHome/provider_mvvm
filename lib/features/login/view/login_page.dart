@@ -41,12 +41,14 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   /// 账号输入框控制器
-  final TextEditingController _accountController =
-      TextEditingController(text: 'user@example.com');
+  final TextEditingController _accountController = TextEditingController(
+    text: 'user@example.com',
+  );
 
   /// 密码输入框控制器
-  final TextEditingController _passwordController =
-      TextEditingController(text: '123456');
+  final TextEditingController _passwordController = TextEditingController(
+    text: '123456',
+  );
 
   @override
   void dispose() {
@@ -134,29 +136,30 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login(BuildContext context, LoginViewModel viewModel) async {
     // ---- 步骤 1：执行登录 ----
     final success = await viewModel.login(
-        _accountController.text, _passwordController.text);
+      _accountController.text,
+      _passwordController.text,
+    );
 
     // ---- 步骤 2：安全性检查 ----
     // mounted=false 表示页面已经销毁，不能再使用 context
     // success=false 或 token/user 为空，说明登录失败或数据不完整，不跳转
-    if (!mounted ||
-        !success ||
-        viewModel.token == null ||
-        viewModel.user == null) {
+    final token = viewModel.token;
+    final user = viewModel.user;
+    if (!context.mounted || !success || token == null || user == null) {
       return;
     }
 
     // ---- 步骤 3：保存登录态 ----
     // AuthProvider 保存 token/user 后会 notifyListeners
     // GoRouter 作为 refreshListenable 会重新执行登录守卫
-    await context
-        .read<AuthProvider>()
-        .loginSuccess(viewModel.token!, viewModel.user!);
+    await context.read<AuthProvider>().loginSuccess(token, user);
 
     // ---- 步骤 4：跳转到主页面 ----
-    if (mounted) {
-      // 登录成功进入主框架页，MainPage 内部再管理首页/社区/我的三个 Tab
-      context.go(RoutePaths.main);
+    if (!context.mounted) {
+      return;
     }
+
+    // 登录成功进入主框架页，MainPage 内部再管理首页/社区/我的三个 Tab
+    context.go(RoutePaths.main);
   }
 }

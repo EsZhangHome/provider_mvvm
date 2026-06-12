@@ -27,9 +27,7 @@ void main() {
 
     // 单元测试里用 get_it 把 LoginRepository 替换成 fake 实现。
     // 这样 ViewModel 的创建方式和真实页面保持一致：都通过 locator 获取依赖。
-    locator.registerLazySingleton<LoginRepository>(
-      FakeLoginRepository.new,
-    );
+    locator.registerLazySingleton<LoginRepository>(FakeLoginRepository.new);
     locator.registerFactory<LoginViewModel>(
       () => LoginViewModel(locator<LoginRepository>()),
     );

@@ -56,11 +56,7 @@ class HomeBanner {
   /// 创建 HomeBanner 的副本，只修改指定的字段。
   ///
   /// 使用场景：局部更新 banner 信息（如只替换标题或图片）。
-  HomeBanner copyWith({
-    String? id,
-    String? title,
-    String? imageUrl,
-  }) {
+  HomeBanner copyWith({String? id, String? title, String? imageUrl}) {
     return HomeBanner(
       id: id ?? this.id,
       title: title ?? this.title,

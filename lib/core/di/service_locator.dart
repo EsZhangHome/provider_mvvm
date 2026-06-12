@@ -42,9 +42,9 @@ import '../network/api_service.dart';
 import '../network/network_status_service.dart';
 import '../permission/permission_service.dart';
 
-/// 全局 get_it 实例，可在 App 任何地方通过 locator<T>() 获取依赖。
+/// 全局 get_it 实例，可在 App 任何地方通过 `locator<T>()` 获取依赖。
 ///
-/// 注意：不要在 build 方法中频繁调用 locator<T>()，
+/// 注意：不要在 build 方法中频繁调用 `locator<T>()`，
 /// 应该在 initState 或 create 回调中获取并保存引用。
 final GetIt locator = GetIt.instance;
 
@@ -133,7 +133,8 @@ Future<void> setupServiceLocator() async {
     locator.registerFactory<LoginViewModel>(() => LoginViewModel(locator()));
   }
   if (!locator.isRegistered<ProfileViewModel>()) {
-    locator
-        .registerFactory<ProfileViewModel>(() => ProfileViewModel(locator()));
+    locator.registerFactory<ProfileViewModel>(
+      () => ProfileViewModel(locator()),
+    );
   }
 }

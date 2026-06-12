@@ -49,7 +49,8 @@ class CommunityPage extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: viewModel.postList.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+            separatorBuilder: (_, index) =>
+                const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               // 当前只是帖子标题列表，后续可以替换成 PostCard 组件
               return Card(

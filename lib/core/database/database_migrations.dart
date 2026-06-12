@@ -43,9 +43,11 @@ class DatabaseMigrations {
     int oldVersion,
     int newVersion,
   ) async {
-    for (var targetVersion = oldVersion + 1;
-        targetVersion <= newVersion;
-        targetVersion++) {
+    for (
+      var targetVersion = oldVersion + 1;
+      targetVersion <= newVersion;
+      targetVersion++
+    ) {
       await _runMigration(db, targetVersion);
     }
   }

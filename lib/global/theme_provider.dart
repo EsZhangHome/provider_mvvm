@@ -28,7 +28,7 @@ import '../core/theme/app_theme.dart';
 
 /// 全局主题管理器。
 ///
-/// 作为 ChangeNotifier 注入到 App 顶层，通过 Consumer<ThemeProvider> 监听主题变化。
+/// 作为 ChangeNotifier 注入到 App 顶层，通过 `Consumer<ThemeProvider>` 监听主题变化。
 ///
 /// 使用方式：
 /// ```dart
@@ -107,13 +107,16 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> toggleTheme() async {
     // ---- 步骤 1：切换 ThemeMode ----
     // 只切换 ThemeMode，不重新创建 ThemeData（缓存中的对象不变）
-    _themeMode =
-        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = _themeMode == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
 
     // ---- 步骤 2：保存到本地 ----
     // 下次打开 App 时，loadTheme 会读取这个值恢复主题
     await LocalStorage.setString(
-        _themeKey, _themeMode == ThemeMode.dark ? 'dark' : 'light');
+      _themeKey,
+      _themeMode == ThemeMode.dark ? 'dark' : 'light',
+    );
 
     // ---- 步骤 3：通知 MaterialApp 重建 ----
     notifyListeners();

@@ -22,11 +22,7 @@ import '../../core/theme/app_spacing.dart';
 /// 展示错误图标、错误信息、和可选的重试按钮。
 /// 通过 StateView 统一调用，业务页面不需要直接使用这个组件。
 class ErrorView extends StatelessWidget {
-  const ErrorView({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const ErrorView({super.key, required this.message, this.onRetry});
 
   /// 错误提示文案，直接展示给用户
   final String message;

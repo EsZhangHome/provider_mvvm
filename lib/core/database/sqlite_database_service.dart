@@ -16,9 +16,8 @@ import 'database_service.dart';
 /// 默认从 AppDatabase 获取数据库实例。
 /// 测试时也可以传入自定义 databaseProvider。
 class SqliteDatabaseService extends _SqliteExecutorService {
-  SqliteDatabaseService({
-    Future<Database> Function()? databaseProvider,
-  }) : _databaseProvider = databaseProvider ?? (() => AppDatabase.database);
+  SqliteDatabaseService({Future<Database> Function()? databaseProvider})
+    : _databaseProvider = databaseProvider ?? (() => AppDatabase.database);
 
   final Future<Database> Function() _databaseProvider;
 
@@ -68,18 +67,10 @@ abstract class _SqliteExecutorService implements DatabaseService {
   }
 
   @override
-  Future<int> delete(
-    String table, {
-    String? where,
-    List<Object?>? whereArgs,
-  }) {
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) {
     return _guard('删除数据失败', () async {
       final databaseExecutor = await executor;
-      return databaseExecutor.delete(
-        table,
-        where: where,
-        whereArgs: whereArgs,
-      );
+      return databaseExecutor.delete(table, where: where, whereArgs: whereArgs);
     });
   }
 
@@ -121,9 +112,7 @@ abstract class _SqliteExecutorService implements DatabaseService {
   }
 
   @override
-  Future<T> transaction<T>(
-    Future<T> Function(DatabaseService service) action,
-  ) {
+  Future<T> transaction<T>(Future<T> Function(DatabaseService service) action) {
     return _guard('执行数据库事务失败', () async {
       final databaseExecutor = await executor;
       if (databaseExecutor is Database) {
@@ -149,11 +138,7 @@ abstract class _SqliteExecutorService implements DatabaseService {
     } on DatabaseException {
       rethrow;
     } catch (error, stack) {
-      throw DatabaseException(
-        message,
-        cause: error,
-        stackTrace: stack,
-      );
+      throw DatabaseException(message, cause: error, stackTrace: stack);
     }
   }
 }

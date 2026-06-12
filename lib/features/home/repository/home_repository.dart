@@ -45,12 +45,13 @@ class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl({
     ApiService? apiService,
     CachePolicy<List<HomeBanner>>? cachePolicy,
-  })  : _apiService = apiService ?? ApiClient.instance,
-        _cachePolicy = cachePolicy ??
-            MemoryCachePolicy<List<HomeBanner>>(
-              // 默认缓存有效期 5 分钟，超过后重新拉取
-              duration: const Duration(minutes: 5),
-            );
+  }) : _apiService = apiService ?? ApiClient.instance,
+       _cachePolicy =
+           cachePolicy ??
+           MemoryCachePolicy<List<HomeBanner>>(
+             // 默认缓存有效期 5 分钟，超过后重新拉取
+             duration: const Duration(minutes: 5),
+           );
 
   /// 网络服务（当前通过 DI 注入，真实后端接入时使用）
   // ignore: unused_field
@@ -85,8 +86,9 @@ class HomeRepositoryImpl implements HomeRepository {
   /// 获取远端 Banner 数据（当前为模拟数据）。
   ///
   /// 接入真实后端时，取消模拟数据代码，启用下面注释中的 _apiService.get 调用。
-  Future<List<HomeBanner>> _fetchRemoteBanners(
-      {CancelToken? cancelToken}) async {
+  Future<List<HomeBanner>> _fetchRemoteBanners({
+    CancelToken? cancelToken,
+  }) async {
     // ---- 模拟网络请求耗时 ----
     await Future<void>.delayed(const Duration(milliseconds: 600));
 

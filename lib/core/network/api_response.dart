@@ -34,11 +34,7 @@ import '../config/env_config.dart';
 ///
 /// 如果实际后端字段名不同（如 code 叫 status, data 叫 result），只需要修改此类即可。
 class ApiResponse<T> {
-  ApiResponse({
-    required this.code,
-    required this.message,
-    this.data,
-  });
+  ApiResponse({required this.code, required this.message, this.data});
 
   /// 业务状态码。
   /// 默认 0 表示成功（可通过 EnvConfig.apiSuccessCode 配置）。

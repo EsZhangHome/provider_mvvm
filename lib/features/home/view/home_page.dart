@@ -66,7 +66,8 @@ class HomePage extends StatelessWidget {
             // Banner 列表项数量
             itemCount: viewModel.bannerList.length,
             // 分隔线
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+            separatorBuilder: (_, index) =>
+                const SizedBox(height: AppSpacing.md),
             // 列表项：当前用 Card + ListTile 展示模拟 banner
             // 接入真实图片时，可以把 leading/subtitle 替换成图片组件
             itemBuilder: (context, index) {

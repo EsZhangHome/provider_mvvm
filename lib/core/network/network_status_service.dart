@@ -17,6 +17,7 @@ enum NetworkConnectionType {
   mobile,
   ethernet,
   bluetooth,
+  satellite,
   vpn,
   other,
   none,
@@ -44,9 +45,8 @@ abstract class NetworkStatusService {
 
 /// 基于 connectivity_plus 的网络状态实现。
 class ConnectivityNetworkStatusService implements NetworkStatusService {
-  ConnectivityNetworkStatusService({
-    Connectivity? connectivity,
-  }) : _connectivity = connectivity ?? Connectivity();
+  ConnectivityNetworkStatusService({Connectivity? connectivity})
+    : _connectivity = connectivity ?? Connectivity();
 
   final Connectivity _connectivity;
 
@@ -61,25 +61,36 @@ class ConnectivityNetworkStatusService implements NetworkStatusService {
     return _connectivity.onConnectivityChanged.map(mapConnectivityResult);
   }
 
-  /// 把三方库的 ConnectivityResult 转成项目自己的 NetworkStatus。
+  /// 把三方库的 ConnectivityResult 列表转成项目自己的 NetworkStatus。
   ///
   /// 单独抽出这个方法，方便单元测试，也避免业务层依赖三方库枚举。
-  static NetworkStatus mapConnectivityResult(ConnectivityResult result) {
-    switch (result) {
-      case ConnectivityResult.wifi:
-        return const NetworkStatus(NetworkConnectionType.wifi);
-      case ConnectivityResult.mobile:
-        return const NetworkStatus(NetworkConnectionType.mobile);
-      case ConnectivityResult.ethernet:
-        return const NetworkStatus(NetworkConnectionType.ethernet);
-      case ConnectivityResult.bluetooth:
-        return const NetworkStatus(NetworkConnectionType.bluetooth);
-      case ConnectivityResult.vpn:
-        return const NetworkStatus(NetworkConnectionType.vpn);
-      case ConnectivityResult.other:
-        return const NetworkStatus(NetworkConnectionType.other);
-      case ConnectivityResult.none:
-        return const NetworkStatus(NetworkConnectionType.none);
+  static NetworkStatus mapConnectivityResult(List<ConnectivityResult> results) {
+    if (results.isEmpty || results.contains(ConnectivityResult.none)) {
+      return const NetworkStatus(NetworkConnectionType.none);
     }
+
+    if (results.contains(ConnectivityResult.mobile)) {
+      return const NetworkStatus(NetworkConnectionType.mobile);
+    }
+    if (results.contains(ConnectivityResult.wifi)) {
+      return const NetworkStatus(NetworkConnectionType.wifi);
+    }
+    if (results.contains(ConnectivityResult.ethernet)) {
+      return const NetworkStatus(NetworkConnectionType.ethernet);
+    }
+    if (results.contains(ConnectivityResult.vpn)) {
+      return const NetworkStatus(NetworkConnectionType.vpn);
+    }
+    if (results.contains(ConnectivityResult.bluetooth)) {
+      return const NetworkStatus(NetworkConnectionType.bluetooth);
+    }
+    if (results.contains(ConnectivityResult.satellite)) {
+      return const NetworkStatus(NetworkConnectionType.satellite);
+    }
+    if (results.contains(ConnectivityResult.other)) {
+      return const NetworkStatus(NetworkConnectionType.other);
+    }
+
+    return const NetworkStatus(NetworkConnectionType.other);
   }
 }

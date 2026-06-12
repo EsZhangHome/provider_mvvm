@@ -29,10 +29,7 @@ import '../view_model/main_view_model.dart';
 /// 只负责组织三个 Tab 的布局和切换，不处理任何业务数据。
 /// 每个 Tab 页面有自己的独立 ViewModel，通过 IndexedStack 保持状态。
 class MainPage extends StatelessWidget {
-  const MainPage({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const MainPage({super.key, this.initialIndex = 0});
 
   /// 初始选中的 Tab 下标。
   /// 外部通过 /main/home（0）、/main/community（1）、/main/mine（2）路径传入。

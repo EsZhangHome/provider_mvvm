@@ -23,10 +23,7 @@ part 'login_request.g.dart';
 /// 后续可以扩展字段（如验证码、设备信息等）。
 @JsonSerializable()
 class LoginRequest {
-  const LoginRequest({
-    required this.account,
-    required this.password,
-  });
+  const LoginRequest({required this.account, required this.password});
 
   /// 账号：手机号或邮箱
   final String account;

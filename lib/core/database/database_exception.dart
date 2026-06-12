@@ -11,11 +11,7 @@
 /// [cause] 保存原始异常，方便日志系统记录真实原因。
 /// [stackTrace] 保存原始堆栈，方便定位是哪一次数据库操作出错。
 class DatabaseException implements Exception {
-  const DatabaseException(
-    this.message, {
-    this.cause,
-    this.stackTrace,
-  });
+  const DatabaseException(this.message, {this.cause, this.stackTrace});
 
   /// 易读的错误消息。
   final String message;
