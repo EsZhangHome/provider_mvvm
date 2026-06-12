@@ -20,12 +20,17 @@
 
 项目当前只保留 Android 和 iOS 平台目录，适合作为移动端业务 App 的基础工程。
 
-当前项目保持 Dart SDK `>=2.19.6 <3.0.0`，所以依赖版本选择的是兼容旧 SDK 的稳定版本，不追最新版。
-如果后续升级到 Dart 3，再统一评估依赖大版本升级。
+当前项目已升级到 Flutter 3.44 稳定版，SDK 约束为：
+
+- Dart SDK：`>=3.12.0 <4.0.0`
+- Flutter SDK：`>=3.44.0`
+
+Android 构建配置已迁移到 Gradle Kotlin DSL；iOS 插件集成已迁移到 Flutter 生成的 Swift Package Manager，不再保留 CocoaPods / Podfile。
 
 ## 0. 大纲导航
 
 - [0.1 当前依赖库说明](#01-当前依赖库说明)
+- [0.2 当前开发环境和平台配置](#02-当前开发环境和平台配置)
 - [1. 项目整体分层](#1-项目整体分层)
 - [2. 启动流程](#2-启动流程)
 - [3. 核心目录说明](#3-核心目录说明)
@@ -66,7 +71,7 @@
 | `flutter_secure_storage` | 运行依赖 | 安全保存 token 等敏感数据 | `core/storage/token_storage.dart` |
 | `json_annotation` | 运行依赖 | 给 Model 标注 JSON 生成规则 | `UserModel`、`HomeBanner`、`LoginRequest` 等 Model |
 | `json_serializable` | 开发依赖 | 生成 `fromJson / toJson` 代码 | 配合 `build_runner` 生成 `*.g.dart` |
-| `build_runner` | 开发依赖 | Dart 代码生成命令行工具 | 执行 `flutter pub run build_runner build --delete-conflicting-outputs` |
+| `build_runner` | 开发依赖 | Dart 代码生成命令行工具 | 执行 `dart run build_runner build` |
 | `cached_network_image` | 运行依赖 | 网络图片缓存、加载占位、失败占位 | `shared/widgets/app_network_image.dart` |
 | `connectivity_plus` | 运行依赖 | 获取网络连接状态 | `core/network/network_status_service.dart`，业务层只依赖 `NetworkStatusService` |
 | `permission_handler` | 运行依赖 | 申请相机、相册、定位、通知等权限 | `core/permission/permission_service.dart` |
@@ -83,6 +88,35 @@
 - 业务页面不要直接依赖 `dio`、`sqflite`、`permission_handler`、`connectivity_plus` 等三方库。
 - 三方能力优先封装到 `core/` 或 `shared/`，再通过接口或通用组件给业务模块使用。
 - 新增库时同步补 README，说明它解决什么问题、封装在哪里、业务层应该怎么用。
+
+## 0.2 当前开发环境和平台配置
+
+推荐开发环境：
+
+| 工具 | 版本 / 要求 |
+| --- | --- |
+| Flutter | `3.44.x stable` |
+| Dart | `3.12.x` |
+| Xcode | `26.5` 或更新版本 |
+| Android SDK | `36` |
+| Java | `17` 或更新版本 |
+
+平台配置说明：
+
+- Android 使用 Kotlin DSL：`android/settings.gradle.kts`、`android/build.gradle.kts`、`android/app/build.gradle.kts`。
+- Android Gradle Plugin 使用 Flutter 3.44 模板配置，Gradle wrapper 使用 `9.1.0`。
+- iOS 插件依赖通过 Flutter 生成的 Swift Package Manager 接入。
+- iOS 不再使用 CocoaPods，仓库中不保留 `ios/Podfile` 和 `ios/Podfile.lock`。
+- iOS 最低部署目标为 `13.0`。
+
+常用验证命令：
+
+```bash
+flutter analyze
+flutter test
+flutter build apk --debug
+flutter build ios --simulator --no-codesign
+```
 
 ## 1. 项目整体分层
 
@@ -974,7 +1008,7 @@ class OrderModel {
 新增或修改带 `@JsonSerializable()` 的 Model 后，需要运行：
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
 
 ### shared/widgets
@@ -1845,13 +1879,13 @@ Widget 测试可以测：
 修改带 `@JsonSerializable()` 的 Model 后，运行：
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
 
 如果你希望监听文件变化自动生成，可以运行：
 
 ```bash
-flutter pub run build_runner watch --delete-conflicting-outputs
+dart run build_runner watch
 ```
 
 生成文件一般是：
@@ -2047,7 +2081,7 @@ Mason 负责生成模块文件，但下面几步通常需要开发者确认：
 常用命令：
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 flutter analyze
 flutter test
 ```
